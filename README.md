@@ -1,2 +1,2 @@
 # utils
-collect all useful utility functions
+collect useful utility functions
