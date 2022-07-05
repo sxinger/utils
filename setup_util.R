@@ -6,7 +6,7 @@
 #   #create .Renviron file 
 # }
 
-##install and load multiple libraries
+##install and load multiple libraries (equivalent to pacman::p_load)
 require_libraries<-function(package_list,verb=T){
   for (lib in package_list) {
     chk_install<-!(lib %in% installed.packages()[,"Package"])
