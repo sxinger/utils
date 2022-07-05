@@ -22,16 +22,19 @@ require_libraries<-function(package_list,verb=T){
   }
 }
 
-unzip_redcap<-function(req_nm){
-  #unzip and save
-  zipF<-paste0("./",req_nm,"-raw.zip")
-  unzip(zipF)
+
+## dual-axis utility function
+convert_scale<-function(from,to){
+  # convert value
+  range_rt<-(max(to) - min(to))/(max(from) - min(from))
+  new_from<-((from - min(from))*range_rt) + min(to)
   
-  #load date
-  out<-list(pat_tbl=read.csv(paste0("./",req_nm,"/",req_nm,"-patient.csv"),stringsAsFactors = F,na.strings = c(""," ")),
-            data_tbl=read.csv(paste0("./",req_nm,"/",req_nm,"-data.csv"),stringsAsFactors = F,na.strings = c(""," ")),
-            code_info=read.csv(paste0("./",req_nm,"/",req_nm,"-code.info.csv"),stringsAsFactors = F,na.strings = c(""," ")))
+  # generate formula to recover axis (revert the new_from formula)
+  revert_formula<-c(paste0("~ (. - ",min(to),") * ",1/range_rt),
+                    rep(NA,length(from)-1))
   
-  return(out)  
+  # results
+  return(list(val=new_from,
+              formula=revert_formula))
 }
 
