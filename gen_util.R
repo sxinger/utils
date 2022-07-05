@@ -2,11 +2,9 @@
 ## general utility functions ##
 ###############################
 ##some initial setup
-startup_config<-function(){
-  #create .Renviron file 
-  
-}
-
+# startup_config<-function(){
+#   #create .Renviron file 
+# }
 
 ##install and load multiple libraries
 require_libraries<-function(package_list,verb=T){
@@ -21,7 +19,6 @@ require_libraries<-function(package_list,verb=T){
     }
   }
 }
-
 
 ## dual-axis utility function
 convert_scale<-function(from,to){
