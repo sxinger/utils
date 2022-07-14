@@ -17,4 +17,13 @@ convert_scale<-function(from,to){
   return(list(val=new_from,
               formula=revert_formula))
 }
-
+## example
+# ggplot(df %<>%
+#          mutate(new_col = convert_scale(enc_pat_ratio,enc)[["val"]],
+#                 axis_formula = convert_scale(enc_pat_ratio,enc)[["formula"]]),
+#        aes(x=site)) +
+#   geom_col(aes(y=enc), size = 1, color = "darkblue", fill = "white")+
+#   geom_line(aes(y=new_col), size = 1.5, color="red", group = 1)+
+#   scale_y_continuous(sec.axis = sec_axis(as.formula(df$axis_formula[1]), name = "sec_axis"))+
+#   theme(axis.text.x = element_text(angle = 45),text=element_text(face="bold")) +
+#   facet_wrap(~ enc_type,ncol=2,scales = "free")
