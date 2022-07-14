@@ -4,6 +4,55 @@
 #######################################################
 #Note: all following functions are specific to projects with dependencies
 
+#purpose: write valuesets to database
+#dependency: 1) valueset specified in json file; 2) packages: DBI,jsonlite
+send_valueset<-function(conn,
+                        home_schema = "PUBLIC",
+                        write_tbl = "TEMP",
+                        dry_run = TRUE){
+  
+  vs_file_type<-gsub(".*\\.","",vs_url)
+  # specify "where" clause based on valuset type
+  if (vs_file_type == "json"){
+    vs<-jsonlite::fromJSON(vs_url)[[vs_name]]
+    # curated valueset of icd diagnosis codes
+    if (vs_template == "curated-dx"){
+      
+    # curated valueset of cpt or icd procedure codes
+    } else if (vs_template == "curated-px"){
+    
+    # eCQM published valuesets
+    } else if (vs_template == "ecqm") {
+      
+    # CCDA published valuesets
+    } else if (vs_template == "ccda"){
+      # TODO
+    
+    # bioportal search results
+    } else if (vs_template == "ncbo"){
+      # TODO
+      
+    # UMLS API search results
+    } else if (vs_template == "umls"){
+      # TODO
+    } else {
+      stop("valueset file type not supported!")
+    }
+  } else if (vs_file_type == "csv"){
+    #TODO
+  }
+  
+  # run query
+  if(dry_run==TRUE){
+    return(sql)
+  }else{
+    DBI::dbSendQuery(conn,
+                     paste0("create or replace table ",
+                            home_schema,".",write_tbl," as ",sql))
+  }
+}
+
+
 #purpose: collect data from target CDM table based on provided valueset
 #dependency: 1) patient set in database; 2) valueset specified in json file;
 #            3) packages: DBI,jsonlite
