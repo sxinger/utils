@@ -79,7 +79,7 @@ load_valueset.ecqm<-function(vs_url = "",vs_name_str = ""){
   
   # initialize lookup table
   lookup_tbl<-data.frame(CODE_TYPE=as.character(),
-                         CODE_TYPE_CDM=cdm_code_type_map(cd_type),
+                         CODE_TYPE_CDM=as.character(),
                          CODE_SUBTYPE=as.character(),
                          CODE=as.character(),
                          CODE_GRP=as.character(),
