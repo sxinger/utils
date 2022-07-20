@@ -128,7 +128,8 @@ load_valueset<-function(vs_template = "curated",
       DBI::dbWriteTable(conn,
                         SQL(paste0(write_to_schema,".",write_to_tbl)),
                         lookup_tbl,
-                        overwrite=overwrite)
+                        overwrite=overwrite,
+                        append=!overwrite)
     }
   }
 }
