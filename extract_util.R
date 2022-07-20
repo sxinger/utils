@@ -90,18 +90,16 @@ load_valueset.ecqm<-function(vs_url = "",vs_name_str = ""){
   vs_name_dist<-stringdist(tolower(vs_name_str),vs_name_list, method="jw")
   vs_name_match<-vs_name_list[which.min(vs_name_dist)]
   vs<-vs_file[[vs_name_match]]
-  for(vs_name in names(vs)){
-      for(cd_type in names(vs[["codelist"]])){
-        cd_lst<-vs[["codelist"]][[cd_type]][,1]
-        lookup_tbl %<>%
-          bind_rows(data.frame(CODE_TYPE=cd_type,
-                               CODE_TYPE_CDM=cdm_code_type_map(cd_type),
-                               CODE_SUBTYPE="exact",
-                               CODE=as.character(cd_lst),
-                               CODE_GRP=vs_name_match,
-                               stringsAsFactors = F))
+  for(cd_type in names(vs[["codelist"]])){
+    cd_lst<-vs[["codelist"]][[cd_type]][,1]
+    lookup_tbl %<>%
+      bind_rows(data.frame(CODE_TYPE=cd_type,
+                            CODE_TYPE_CDM=cdm_code_type_map(cd_type),
+                            CODE_SUBTYPE="exact",
+                            CODE=as.character(cd_lst),
+                            CODE_GRP=vs_name_match,
+                            stringsAsFactors = F))
     }
-  }
   # return data.frame
   return(lookup_tbl)
 }
