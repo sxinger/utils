@@ -112,7 +112,8 @@ load_valueset<-function(vs_template = "curated",
                         dry_run = TRUE,
                         conn=NULL,
                         write_to_schema = "PUBLIC",
-                        write_to_tbl = "TEMP"){
+                        write_to_tbl = "TEMP",
+                        overwrite=TRUE){
   vs_load_func<-get(paste0("load_valueset.",vs_template))
   lookup_tbl<-vs_load_func(vs_url=vs_url,vs_name_str=vs_name_str)
   
@@ -124,8 +125,10 @@ load_valueset<-function(vs_template = "curated",
       stop("connection needs to be specified!")
     }else{
       # write valueset table to target db
-      copy_to(conn, lookup_tbl, 
-              in_schema(write_to_schema, write_to_tbl))
+      DBI::dbWriteTable(conn,
+                        SQL(paste0(write_to_schema,".",write_to_tbl)),
+                        lookup_tbl,
+                        overwrite=overwrite)
     }
   }
 }
