@@ -57,8 +57,7 @@ univar_analysis_mixed<-function(id,grp,X,data_type,pretty=F){
     dplyr::mutate(val_miss=sum(is.na(val))) %>%
     ungroup %>% filter(!is.na(val)) %>%
     group_by(var,grp,tot,val_miss,val) %>%
-    dplyr::summarise(n=length(unique(id))) %>%
-    ungroup %>%
+    dplyr::summarise(n=length(unique(id)),.groups="drop") %>%
     mutate(prop=round(n/tot,4)) %>%
     left_join(df_cat %>%
                 group_by(var) %>%
