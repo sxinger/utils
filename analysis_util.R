@@ -28,8 +28,8 @@ univar_analysis_mixed<-function(id,grp,X,data_type,pretty=F){
                      val_q1=quantile(val,0.25,na.rm=T),
                      val_q3=quantile(val,0.75,na.rm=T),
                      val_min=min(val,na.rm=T),
-                     val_max=max(val,na.rm=T)) %>% 
-    ungroup %>%
+                     val_max=max(val,na.rm=T),
+                     .groups = "drop") %>% 
     left_join(df_num %>%
                 nest(-var) %>%
                 mutate(fit=map(data, ~ aov(val~grp,data=.x)),
@@ -62,8 +62,8 @@ univar_analysis_mixed<-function(id,grp,X,data_type,pretty=F){
     mutate(prop=round(n/tot,4)) %>%
     left_join(df_cat %>%
                 group_by(var) %>%
-                dplyr::summarise(p.value=chisq.test(val,grp,simulate.p.value=T)$p.value) %>%
-                ungroup,
+                dplyr::summarise(p.value=chisq.test(val,grp,simulate.p.value=T)$p.value,
+                                 .groups = "drop"),
               by="var") %>%
     mutate(label=paste0(n,"; ",
                         # round(val_miss/n,2),"; ", #missing rate
@@ -87,8 +87,7 @@ univar_analysis_mixed<-function(id,grp,X,data_type,pretty=F){
       separate("var",c("var","cat"),sep="=",extra="merge",fill="right") %>%
       mutate(cat=case_when(var=="n" ~ "",
                            is.na(cat) ~ "mean(sd) [miss]",
-                           TRUE ~ paste0(cat,",n(%) [miss]")))
-    
+                           TRUE ~ paste0(cat,",n(%) [miss]")))    
   }else{
     out<-list(out_num=out_num,
               out_cat=out_cat)
@@ -189,7 +188,8 @@ get_perf_summ<-function(pred,real,keep_all_cutoffs=F){
                                  npv_m=mean(npv,na.rm=T),
                                  acc_m=mean(acc,na.rm=T),
                                  fscore_m=mean(fscore,na.rm=T),
-                                 mcc_m=mean(mcc,na.rm=T)) %>%
+                                 mcc_m=mean(mcc,na.rm=T),
+                                 .groups = "drop") %>%
                 gather(overall_meas,meas_val))
   
   out<-list(perf_summ=perf_summ)
@@ -214,7 +214,8 @@ get_calibr<-function(pred,real,n_bin=20){
                      bin_upper=max(pred),
                      bin_mid=median(pred),
                      y_agg = sum(y),
-                     pred_p = mean(pred)) %>%
+                     pred_p = mean(pred),
+                     .groups = "drop") %>%
     dplyr::mutate(y_p=y_agg/expos) %>%
     dplyr::mutate(binCI_lower = pmax(0,pred_p-1.96*sqrt(y_p*(1-y_p)/expos)),
                   binCI_upper = pred_p+1.96*sqrt(y_p*(1-y_p)/expos))
