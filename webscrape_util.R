@@ -3,6 +3,7 @@
 ########################################
 
 ## download xlsx as temp file and load as df
+## note: read.csv can direclty read csv file from url
 # dependendy: httr, readxl
 load_xlsx_from_url<-function(url,skip=0){
   GET(url,write_disk(dat <- tempfile(fileext = ".xlsx")))
