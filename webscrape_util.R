@@ -2,6 +2,14 @@
 ## utility functions for web scraping ##
 ########################################
 
+## download xlsx as temp file and load as df
+# dependendy: httr, readxl
+load_xlsx_from_url<-function(url,skip=0){
+  GET(url,write_disk(dat <- tempfile(fileext = ".xlsx")))
+  dat<-read_xlsx(dat,skip=skip)
+  return(dat)
+}
+
 ## print link for LOINC code search result
 get_loinc_ref<-function(loinc){
   #url to loinc.org 
