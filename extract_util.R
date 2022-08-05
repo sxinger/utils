@@ -24,6 +24,35 @@ cdm_code_type_map<-function(cdtype){
   }
 }
 
+load_valueset.ncbo<-function(vs_url = "",vs_name_str = ""){
+  # load valueset in json
+  vs_file_type<-gsub(".*\\.","=",vs_url)
+  vs_file<-jsonlite::fromJSON(vs_url)
+  
+  # initialize lookup table
+  lookup_tbl<-data.frame(CODE_TYPE=as.character(),
+                         CODE_TYPE_CDM=as.character(),
+                         CODE_SUBTYPE=as.character(),
+                         CODE=as.character(),
+                         CODE_GRP=as.character(),
+                         stringsAsFactors=F)
+  
+  # main code body for parsing json file
+  vs_name_list<-names(vs_file)
+  vs_name_dist<-stringdist(tolower(vs_name_str),vs_name_list, method="jw")
+  vs_name_match<-vs_name_list[which.min(vs_name_dist)]
+  vs<-vs_file[[vs_name_match]]
+  for(cd_type_idx in seq_along(vs[["code_type"]])){
+    lookup_tbl %<>%
+      bind_rows(data.frame(CODE_TYPE=vs[["code_type"]][[cd_type_idx]],
+                           CODE_TYPE_CDM=cdm_code_type_map(vs[["code_type"]][cd_type_idx]),
+                           CODE_SUBTYPE="exact",
+                           CODE=as.character(vs[["code"]][[cd_type_idx]]),
+                           CODE_GRP=vs_name_match,
+                           stringsAsFactors = F))
+  }
+}
+
 load_valueset.curated<-function(vs_url = "",vs_name_str = ""){
   # load valueset in json
   vs_file_type<-gsub(".*\\.","=",vs_url)
@@ -94,11 +123,11 @@ load_valueset.ecqm<-function(vs_url = "",vs_name_str = ""){
     cd_lst<-vs[["codelist"]][[cd_type]][,1]
     lookup_tbl %<>%
       bind_rows(data.frame(CODE_TYPE=cd_type,
-                            CODE_TYPE_CDM=cdm_code_type_map(cd_type),
-                            CODE_SUBTYPE="exact",
-                            CODE=as.character(cd_lst),
-                            CODE_GRP=vs_name_match,
-                            stringsAsFactors = F))
+                           CODE_TYPE_CDM=cdm_code_type_map(cd_type),
+                           CODE_SUBTYPE="exact",
+                           CODE=as.character(cd_lst),
+                           CODE_GRP=vs_name_match,
+                           stringsAsFactors = F))
     }
   # return data.frame
   return(lookup_tbl)
