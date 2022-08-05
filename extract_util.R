@@ -51,6 +51,8 @@ load_valueset.ncbo<-function(vs_url = "",vs_name_str = ""){
                            CODE_GRP=vs_name_match,
                            stringsAsFactors = F))
   }
+  # return data.frame
+  return(lookup_tbl)
 }
 
 load_valueset.curated<-function(vs_url = "",vs_name_str = ""){

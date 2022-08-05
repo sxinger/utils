@@ -1,14 +1,16 @@
 rm(list=ls()); gc()
 setwd("C:/repo/utils")
 
-install.packages("jsonlite")
-install.packages("stringdist")
+# install.packages("jsonlite")
+# install.packages("stringdist")
 
 library(jsonlite)
 library(DBI)
 library(magrittr)
 library(tidyverse)
 library(stringdist)
+
+source("extract_util.R")
 
 load_valueset.ncbo(vs_url="https://raw.githubusercontent.com/sxinger/PheCDM/main/valuesets/valueset_autogen/als-tx_output.json",
                    vs_name_str="riluzole")
