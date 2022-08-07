@@ -43,6 +43,8 @@ load_valueset.ncbo<-function(vs_url = "",vs_name_str = ""){
   vs_name_match<-vs_name_list[which.min(vs_name_dist)]
   vs<-vs_file[[vs_name_match]]
   for(cd_type_idx in seq_along(vs[["code_type"]])){
+    # skip if empty
+    if(length(vs[["code"]][[cd_type_idx]])==0) next
     lookup_tbl %<>%
       bind_rows(data.frame(CODE_TYPE=vs[["code_type"]][[cd_type_idx]],
                            CODE_TYPE_CDM=cdm_code_type_map(vs[["code_type"]][cd_type_idx]),

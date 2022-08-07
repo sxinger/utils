@@ -18,29 +18,7 @@ load_valueset(vs_template = "rxnav",
 
 load_valueset(vs_template = "ncbo",
               vs_url="https://raw.githubusercontent.com/sxinger/PheCDM/main/valuesets/valueset_autogen/als-tx_output.json",
-              vs_name_str="riluzole")
-
-
-load_valueset.curated(vs_url = "https://raw.githubusercontent.com/sxinger/PheCDM/main/valusets/valueset_curated/vs-osa-comorb.json",
-                      vs_name_str = "myocardial infarction")
-
-load_valueset.curated(vs_url = "https://raw.githubusercontent.com/sxinger/PheCDM/main/valusets/valueset_curated/vs-osa-comorb.json",
-                      vs_name_str = "peripheral")
-
-load_valueset.curated(vs_url = "https://raw.githubusercontent.com/sxinger/PheCDM/main/valusets/valueset_curated/vs-osa-comorb.json",
-                      vs_name_str = "cerebrovascular")
-
-
-load_valueset.curated(vs_url = "https://raw.githubusercontent.com/sxinger/PheCDM/main/valusets/valueset_curated/vs-osa-comorb.json",
-                      vs_name_str = "bariatric surgery")
-
-load_valueset.ecqm(vs_url = "https://raw.githubusercontent.com/sxinger/PheCDM/main/valusets/valueset_autogen/ecqm-allergy-intolerance.json",
-                   vs_name_str = "statin")
-
-
-load_valueset.curated(vs_url = "https://raw.githubusercontent.com/sxinger/PheCDM/main/valusets/valueset_autogen/ecqm-medication.json",
-                      vs_name_str = "warfarin")
-
+              vs_name_str="mechanical ventilation")
 
 load_valueset(vs_template = "curated",
               vs_url = "https://raw.githubusercontent.com/sxinger/PheCDM/main/valusets/valueset_curated/vs-osa-comorb.json",
