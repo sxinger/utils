@@ -55,6 +55,33 @@ load_valueset.ncbo<-function(vs_url = "",vs_name_str = ""){
   return(lookup_tbl)
 }
 
+load_valueset.rxnav<-function(vs_url = "",vs_name_str = ""){
+  # load valueset in json
+  vs_file_type<-gsub(".*\\.","=",vs_url)
+  vs_file<-jsonlite::fromJSON(vs_url)
+  
+  # initialize lookup table
+  lookup_tbl<-data.frame(RXCUI=as.character(),
+                         LABEL=as.character(),
+                         NDC=as.character(),
+                         stringsAsFactors=F)
+  
+  # main code body for parsing json file
+  vs_name_list<-names(vs_file)
+  vs_name_dist<-stringdist(tolower(vs_name_str),vs_name_list, method="jw")
+  vs_name_match<-vs_name_list[which.min(vs_name_dist)]
+  vs<-vs_file[[vs_name_match]] %>% 
+    filter(ndc!="character(0)") %>%
+    unnest_wider(ndc,names_sep="_") %>%
+    gather(ndc_idx,ndc,-rxcui,-label) %>%
+    filter(!is.na(ndc)) %>% select(-ndc_idx)
+
+  # return data.frame
+  colnames(vs)<-toupper(colnames(vs))
+  lookup_tbl %<>% bind_rows(data.frame(vs))
+  return(lookup_tbl)
+}
+
 load_valueset.curated<-function(vs_url = "",vs_name_str = ""){
   # load valueset in json
   vs_file_type<-gsub(".*\\.","=",vs_url)

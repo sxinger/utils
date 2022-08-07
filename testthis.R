@@ -12,8 +12,14 @@ library(stringdist)
 
 source("extract_util.R")
 
-load_valueset.ncbo(vs_url="https://raw.githubusercontent.com/sxinger/PheCDM/main/valuesets/valueset_autogen/als-tx_output.json",
-                   vs_name_str="riluzole")
+load_valueset(vs_template = "rxnav",
+              vs_url="https://raw.githubusercontent.com/sxinger/PheCDM/main/valuesets/valueset_autogen/als-rx-output.json",
+              vs_name_str="riluzole")
+
+load_valueset(vs_template = "ncbo",
+              vs_url="https://raw.githubusercontent.com/sxinger/PheCDM/main/valuesets/valueset_autogen/als-tx_output.json",
+              vs_name_str="riluzole")
+
 
 load_valueset.curated(vs_url = "https://raw.githubusercontent.com/sxinger/PheCDM/main/valusets/valueset_curated/vs-osa-comorb.json",
                       vs_name_str = "myocardial infarction")
