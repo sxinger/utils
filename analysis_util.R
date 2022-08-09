@@ -100,7 +100,7 @@ univar_analysis_mixed<-function(id,grp=1,X,data_type,pretty=F){
   if(pretty){
       # convert to html table output using kable
       colnames(out)<-c("var","cat",paste0("exposure=",unique(grp)),"p.value")
-      out %>% 
+      out %<>% 
         mutate(var_fac=factor(var,ordered = TRUE, levels = c("n",gsub("-",".",var_lst)))) %>%
         arrange(var_fac,cat) %>%
         group_by(var) %>%
@@ -116,8 +116,6 @@ univar_analysis_mixed<-function(id,grp=1,X,data_type,pretty=F){
 
   return(out)
 }
-
-
 
 get_perf_summ<-function(pred,real,keep_all_cutoffs=F){
   # various performace table

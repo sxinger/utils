@@ -313,3 +313,14 @@ collect_cdm<-function(conn,
     }
   }
 }
+
+load_value_mapping.resdac<-function(url){
+  if(){
+
+  }else if(grepl("CMS_PRVDR_SPCLTY_TB",url)){
+
+  }else if(){
+
+  }
+  
+}
