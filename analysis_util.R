@@ -5,14 +5,12 @@
 # multiclass y is not supported yet!
 # data_type should be a vector of "cat" or "num"
 #require (purrr,broom,tibble)
-univar_analysis_mixed<-function(id,grp,X,data_type,pretty=F){
+univar_analysis_mixed<-function(id,grp=1,X,data_type,pretty=F){
   if(ncol(X)!=length(data_type)){
     stop("data types of X need to be specified")
   }
-  
-  #TODO: when there is only 1 category
-  
-  # anova
+   
+  # anova - numerical variables
   df_num<-data.frame(cbind(id,grp,X[,(data_type=="num"),drop=F]),stringsAsFactors=F) %>%
     gather(var,val,-grp,-id) %>%
     mutate(grp=as.factor(grp)) %>%
@@ -29,22 +27,28 @@ univar_analysis_mixed<-function(id,grp,X,data_type,pretty=F){
                      val_q3=quantile(val,0.75,na.rm=T),
                      val_min=min(val,na.rm=T),
                      val_max=max(val,na.rm=T),
-                     .groups = "drop") %>% 
-    left_join(df_num %>%
-                nest(-var) %>%
-                mutate(fit=map(data, ~ aov(val~grp,data=.x)),
-                       tidied=map(fit,tidy)) %>%
-                unnest(tidied) %>% 
-                filter(!is.na(p.value)) %>%
-                select(var,p.value),
-              by="var") %>%
-    mutate(label=paste0(n,"; ",
-                        # round(val_miss/n,2),"; ", #missing rate
-                        round(val_mean,1),"(",round(val_sd,2),"); ",
-                        val_med,"(",val_q1,",",val_q3,")"))
-  
-  
-  # chi-sq
+                     .groups = "drop") 
+
+    if(length(unique(grp))>1){
+      out_num %<>% 
+        left_join(df_num %>%
+                    nest(-var) %>%
+                    mutate(fit=map(data, ~ aov(val~grp,data=.x)),
+                           tidied=map(fit,tidy)) %>%
+                    unnest(tidied) %>% 
+                    filter(!is.na(p.value)) %>%
+                    select(var,p.value),
+                  by="var") 
+    } else {
+      out_num %<>% mutate(p.value = 1)
+    }
+    out_num %<>% 
+      mutate(label=paste0(n,"; ",
+                          # round(val_miss/n,2),"; ", #missing rate
+                          round(val_mean,1),"(",round(val_sd,2),"); ",
+                          val_med,"(",val_q1,",",val_q3,")"))
+                    
+  # chi-sq - categorical variables
   df_cat<-data.frame(cbind(id,grp,X[,(data_type=="cat")]),stringsAsFactors=F) %>%
     gather(var,val,-grp,-id) %>%
     mutate(grp=as.factor(grp),val=as.factor(val))
@@ -58,42 +62,62 @@ univar_analysis_mixed<-function(id,grp,X,data_type,pretty=F){
     ungroup %>% filter(!is.na(val)) %>%
     group_by(var,grp,tot,val_miss,val) %>%
     dplyr::summarise(n=length(unique(id)),.groups="drop") %>%
-    mutate(prop=round(n/tot,4)) %>%
-    left_join(df_cat %>%
-                group_by(var) %>%
-                dplyr::summarise(p.value=chisq.test(val,grp,simulate.p.value=T)$p.value,
-                                 .groups = "drop"),
-              by="var") %>%
-    mutate(label=paste0(n,"; ",
-                        # round(val_miss/n,2),"; ", #missing rate
-                        "(",prop*100,"%)"))
+    mutate(prop=round(n/tot,4)) 
+    
+    if(length(unique(grp))>1){
+      out_cat %<>%
+        left_join(df_cat %>%
+                    group_by(var) %>%
+                    dplyr::summarise(p.value=chisq.test(val,grp,simulate.p.value=T)$p.value,
+                                    .groups = "drop"),
+                  by="var") 
+    }else{
+      out_cat %<>% mutate(p.value = 1)
+    }
+
+    out_cat %<>%
+      mutate(label=paste0(n,"; ","(",prop*100,"%)"))
   
+  # organize into tabulated format
+  out<-out_num %>% 
+    select(n,grp) %>% unique %>%
+    gather(var,val,-grp) %>% 
+    mutate(val=as.character(val)) %>% 
+    spread(grp,val) %>%
+    bind_rows(out_num %>%
+                mutate(label2=paste0(round(val_mean,1)," (",round(val_sd,1),")"," [",round(val_miss/n,2),"]")) %>%
+                dplyr::select(var,grp,p.value,label2) %>% spread(grp,label2)) %>%
+    bind_rows(out_cat %>%
+                unite("var",c("var","val"),sep="=") %>%
+                mutate(label2=paste0(n," (",round(prop*100,1),"%)"," [",round(val_miss/n,2),"]")) %>%
+                dplyr::select(var,grp,p.value,label2) %>% spread(grp,label2)) %>%
+    mutate(p.value=round(p.value,4)) %>%
+    separate("var",c("var","cat"),sep="=",extra="merge",fill="right") %>%
+    mutate(cat=case_when(var=="n" ~ "",
+                          is.na(cat) ~ "mean(sd) [miss]",
+                          TRUE ~ paste0(cat,",n(%) [miss]"))) 
   #output
   if(pretty){
-    out<-out_num %>% 
-      select(n,grp) %>% unique %>%
-      gather(var,val,-grp) %>% 
-      mutate(val=as.character(val)) %>% 
-      spread(grp,val) %>%
-      bind_rows(out_num %>%
-                  mutate(label2=paste0(round(val_mean,1)," (",round(val_sd,1),")"," [",round(val_miss/n,2),"]")) %>%
-                  dplyr::select(var,grp,p.value,label2) %>% spread(grp,label2)) %>%
-      bind_rows(out_cat %>%
-                  unite("var",c("var","val"),sep="=") %>%
-                  mutate(label2=paste0(n," (",round(prop*100,1),"%)"," [",round(val_miss/n,2),"]")) %>%
-                  dplyr::select(var,grp,p.value,label2) %>% spread(grp,label2)) %>%
-      mutate(p.value=round(p.value,4)) %>%
-      separate("var",c("var","cat"),sep="=",extra="merge",fill="right") %>%
-      mutate(cat=case_when(var=="n" ~ "",
-                           is.na(cat) ~ "mean(sd) [miss]",
-                           TRUE ~ paste0(cat,",n(%) [miss]")))    
-  }else{
-    out<-list(out_num=out_num,
-              out_cat=out_cat)
+      # convert to html table output using kable
+      colnames(out)<-c("var","cat",paste0("exposure=",unique(grp)),"p.value")
+      out %>% 
+        mutate(var_fac=factor(var,ordered = TRUE, levels = c("n",gsub("-",".",var_lst)))) %>%
+        arrange(var_fac,cat) %>%
+        group_by(var) %>%
+        mutate(keep1row = row_number()) %>%
+        ungroup %>%
+        mutate(var = case_when(keep1row==1 ~ var,
+                              TRUE ~ ""),
+              p.value = case_when(keep1row==1 ~ as.character(p.value),
+                                  TRUE ~ "")) %>%
+        select(-var_fac,-keep1row) %>%
+        kbl() %>% kable_material(c("striped", "hover"))
   }
-  
+
   return(out)
 }
+
+
 
 get_perf_summ<-function(pred,real,keep_all_cutoffs=F){
   # various performace table
