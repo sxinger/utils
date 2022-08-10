@@ -35,6 +35,7 @@ ggforest2 <- function (model, data = NULL, main = "Hazard ratio",
   conf.high <- conf.low <- estimate <- NULL
   stopifnot(class(model) == "coxph")
   data <- survminer:::.get_data(model, data = data)
+  # remove the additional "Strata" or "cluster" term
   terms <- attr(model$terms, "dataClasses")
   terms <- terms[names(terms) %in% colnames(data)]
   coef <- as.data.frame(broom::tidy(model,conf.int=TRUE,conf.level=0.95))
