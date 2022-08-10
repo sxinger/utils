@@ -35,7 +35,8 @@ ggforest2 <- function (model, data = NULL, main = "Hazard ratio",
   conf.high <- conf.low <- estimate <- NULL
   stopifnot(class(model) == "coxph")
   data <- survminer:::.get_data(model, data = data)
-  terms <- attr(model$terms, "dataClasses")[-1]
+  terms <- attr(model$terms, "dataClasses")
+  terms <- terms[names(terms) %in% colnames(data)]
   coef <- as.data.frame(broom::tidy(model))
   gmodel <- broom::glance(model)
   allTerms <- lapply(seq_along(terms), function(i) {
