@@ -37,7 +37,7 @@ ggforest2 <- function (model, data = NULL, main = "Hazard ratio",
   data <- survminer:::.get_data(model, data = data)
   terms <- attr(model$terms, "dataClasses")
   terms <- terms[names(terms) %in% colnames(data)]
-  coef <- as.data.frame(broom::tidy(model))
+  coef <- as.data.frame(broom::tidy(model,conf.int=TRUE,conf.level=0.95))
   gmodel <- broom::glance(model)
   allTerms <- lapply(seq_along(terms), function(i) {
     var <- names(terms)[i]
@@ -61,13 +61,11 @@ ggforest2 <- function (model, data = NULL, main = "Hazard ratio",
     }    
   })
   allTermsDF <- do.call(rbind, allTerms)
-  colnames(allTermsDF) <- c("var", "level", "N", 
-                            "pos")
+  colnames(allTermsDF) <- c("var", "level", "N", "pos")
   inds <- apply(allTermsDF[, 1:2], 1, paste0, collapse = "")
   rownames(coef) <- gsub(coef$term, pattern = "`", replacement = "")
   toShow <- cbind(allTermsDF, coef[inds, ])[, c("var", "level", "N", "p.value", 
-                                                "estimate", "conf.low", 
-                                                "conf.high", "pos")]
+                                                "estimate", "conf.low", "conf.high", "pos")]
   toShowExp <- toShow[, 5:7]
   toShowExp[is.na(toShowExp)] <- 0
   toShowExp <- format(exp(toShowExp), digits = noDigits)
