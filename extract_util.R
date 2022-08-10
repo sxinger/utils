@@ -164,7 +164,10 @@ load_valueset.ecqm<-function(vs_url = "",vs_name_str = ""){
   return(lookup_tbl)
 }
 
-load_valueset<-function(vs_template = "curated",
+load_valueset<-function(vs_template = c("curated",
+                                        "ecqm",
+                                        "ncbo",
+                                        "rxnav"),
                         vs_url = "",
                         vs_name_str = "",
                         dry_run = TRUE,
