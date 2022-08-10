@@ -314,15 +314,15 @@ collect_cdm<-function(conn,
   }
 }
 
-load_value_mapping.resdac_kb<-function(url){
-  if(grepl("SSA_STATE",url)){
+load_mapping.resdac<-function(mp_name){
+  if(grepl("SSA_STATE",mp_name)){
     tbl<-read.table("https://resdac.org/sites/datadocumentation.resdac.org/files/State%20Table.txt",
                     sep="=", skip = 2) %>%
       rename(CODE = V1, LABEL = V2) %>%
       mutate(CODE = str_pad(trimws(CODE),2,"left","0"),
              LABEL = trimws(gsub(" \\(.*","",LABEL)))
 
-  }else if(grepl("PRVDR_SPCLTY",url)){
+  }else if(grepl("PRVDR_SPCLTY",mp_name)){
     tbl<-readLines("https://resdac.org/sites/datadocumentation.resdac.org/files/CMS_PRVDR_SPCLTY_TB_rev01242018_0.txt") %>% as.data.frame
     colnames(tbl)<-"line"
     tbl %<>%
@@ -332,7 +332,7 @@ load_value_mapping.resdac_kb<-function(url){
       group_by(CODE) %>%
       summarise(LABEL = paste(trimws(LABEL),collapse = " "),.groups="drop")
     
-  }else if(grepl("CMS_TYPE_SRVC",url)){
+  }else if(grepl("CMS_TYPE_SRVC",mp_name)){
     tbl<-read.table("https://resdac.org/sites/datadocumentation.resdac.org/files/CMS%20Type%20of%20Service%20Table.txt",
                          sep="=", skip = 2) %>%
       rename(CODE = V1, LABEL = V2) %>%
@@ -340,4 +340,10 @@ load_value_mapping.resdac_kb<-function(url){
              LABEL = trimws(gsub(" \\(.*","",LABEL)))
   }
   return(tbl)
+}
+
+load_mapping<-function(mp_template = "resdac",mp_name){
+  mp_load_func<-get(paste0("load_mapping.",mp_template))
+  mp_tbl<-mp_load_func(mp_name)
+  return(mp_tbl)
 }
