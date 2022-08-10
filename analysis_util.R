@@ -113,7 +113,6 @@ univar_analysis_mixed<-function(id,grp=1,X,data_type,pretty=F){
         select(-var_fac,-keep1row) %>%
         kbl() %>% kable_material(c("striped", "hover"))
   }
-
   return(out)
 }
 
