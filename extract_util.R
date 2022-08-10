@@ -314,7 +314,9 @@ collect_cdm<-function(conn,
   }
 }
 
-load_mapping.resdac<-function(mp_name){
+load_mapping.resdac<-function(mp_name=c("SSA_STATE",
+                                        "PRVDR_SPCLTY",
+                                        "CMS_TYPE_SRVC")){
   if(grepl("SSA_STATE",mp_name)){
     tbl<-read.table("https://resdac.org/sites/datadocumentation.resdac.org/files/State%20Table.txt",
                     sep="=", skip = 2) %>%
