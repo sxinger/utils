@@ -99,7 +99,7 @@ univar_analysis_mixed<-function(id,grp=1,X,data_type,pretty=F){
   #output
   if(pretty){
       # convert to html table output using kable
-      colnames(out)<-c("var","cat",paste0("exposure=",unique(grp)),"p.value")
+      colnames(out)<-c("var","cat",paste0("exposure=",sort(unique(grp))),"p.value")
       out %<>% 
         mutate(var_fac=factor(var,ordered = TRUE, levels = c("n",gsub("-",".",var_lst)))) %>%
         arrange(var_fac,cat) %>%
