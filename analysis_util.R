@@ -243,6 +243,50 @@ get_calibr<-function(pred,real,n_bin=20){
   return(calib)
 }
 
+coxph_stratified<-function(dt,time_col,status_col,
+                           expos_col="", # column of exposure/intervention
+                           cov_col=list(), # covariate columns for full model
+                           cols_strata=list(),
+                           cols_excld=list() # 1-to-1 mapping with cols_strata
+                           ){
+  # create strata metadata file
+  strata<-c()
+  for(i in seq_len(cols_strata)){
+    col_nm<-cols_strata[i]
+    col_i<-dt[,col_nm] %>% unlist
+    strata<-rbind(strata,
+                  data.frame(
+                    val=unique(col_i),
+                    var=rep(col_nm,length(col_i)),
+                    excld=rep(cols_excld[i],length(col_i))
+                    )
+                  )
+  }
+  # stack regression results from stratified models
+  result<-c()
+  for(i in seq_len(nrow(strata))){
+    # curate variable list
+    var_filter<-cov_col[grepl(cov_col %in% colnames(dt))]
+    var_filter<-var_filter[!grepl(strata$excld[i],var_filter)]
+    # form regression formula
+    fit_frm<-formula(paste0("Surv(",time_col,",",status_col,") ~ ",
+                          paste(c(var_filter,expos_col),collapse = "+")))
+    fit_mort_cov<-coxph(fit_frm, 
+                        data = dt %>% 
+                          filter(.data[[strata$var[i]]]==strata$val[i]))
+    # get all coefficients
+    fit_summ<-summary(fit_mort_cov)$coefficients
+    fit_var<-rownames(fit_summ)
+    rownames(fit_summ)<-NULL
+    result<-rbind(result,
+                  cbind(stratum_var=strata$var[i],
+                      stratum_val=strata$val[i],
+                      fit_var=fit_var,
+                      fit_summ))
+  }                            
+  return(result)
+}
+
 # #TODO
 # explain_model<-function(){
 #   
