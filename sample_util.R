@@ -145,6 +145,7 @@ strata_sample<-function(ref_dat, #reference dataset
                         match_dat, #matching dataset
                         keep_col="patient_num",
                         compare_metric=c("age","sex"), #matching criteria
+                        update_match_metric=NULL, #copy values of matching sample from ref_dat
                         boots=5,
                         nnk=boots+1, #number of candidate neighbors, recommend:nnk>=boots
                         searchtype=c("standard", "priority", "radius"),
@@ -160,44 +161,49 @@ strata_sample<-function(ref_dat, #reference dataset
     if(verb){
       cat("bootstrapped sample:",k,"\n")
     }
-    
-    start_kt<-Sys.time()
-    #identify k-nearest-neighbour
+
+    # identify k-nearest-neighbour
     sample_pos<-ref_dat$row_id
     sample_neg<-nn2(match_dat[,compare_metric],
                     ref_dat[,compare_metric],
                     k=nnk,
                     searchtype=searchtype)$nn.idx[,sample(seq_len(nnk),1)] #inject randomness
-    sample_neg<-match_dat[sample_neg,]$row_id
+    sample_neg2<-match_dat[sample_neg,]$row_id
+    idx_map<-data.frame(pos_idx=sample_pos,neg_idx=sample_neg2)
     
-    #reconstruct stratified samples
-    idx_lst<-c(sample_pos,sample_neg)
-    idx_lst<-idx_lst[order(idx_lst)]
-    
-    if(verb){
-      cat("...reconstruct stratified sample of size ",length(idx_lst),
-          " in ",Sys.time()-start_kt,units(Sys.time()-start_kt),"\n")
+    # update certain field by copying matched value from ref_dat
+    ref_match<-match_dat[sample_neg,c("row_id",update_match_metric)]
+    if(!is.null(update_match_metric)){
+      ref_match<-ref_match %>%
+        inner_join(idx_map,by=c("row_id"="neg_idx")) %>%
+        unique
+      ref_match<-ref_match %>%
+        select(-all_of(update_match_metric)) %>%
+        inner_join(ref_dat %>% select(all_of(c("row_id",update_match_metric))),
+                  by=c("pos_idx"="row_id")) %>%
+        select(-pos_idx)
     }
-    
-    start_kt<-Sys.time()
-    idx_map<-as.data.frame(table(idx_lst))
-    sample_reconst0<-as.data.table(rbind(ref_dat[,c(compare_metric,"row_id",keep_col)],
-                                         match_dat[,c(compare_metric,"row_id",keep_col)]))[(row_id %in% idx_map$idx_lst)]
-    sample_reconst<-sample_reconst0[rep(seq_len(nrow(sample_reconst0)),idx_map$Freq)]
-    sample_reconst[,boots_rnd:=k]
-    
+
+    # reconstruct stratified samples
+    col_sel<-c("row_id",compare_metric,keep_col)
+    if(update_match_metric %in% col_sel){
+      col_sel<-col_sel[!col_sel %in% update_match_metric]
+    }
+    sample_reconst<-ref_match %>%
+      inner_join(match_dat %>% select(all_of(col_sel)),
+                by="row_id") %>%
+      mutate(boots_rnd=k)
+
+    # stack bootstrapped sample
     boots_samp<-rbind(boots_samp,sample_reconst)
-    
     if(verb){
-      cat(".....rebuild the balanced sample in ",
-          Sys.time()-start_kt,units(Sys.time()-start_kt),"\n")
-      
       cat("Finish bootstrap sample ",k," in ",
           Sys.time()-start_k,units(Sys.time()-start_k),"\n")
     }
     
+    # if without replacement, remove the current sample from sample pool
     if(!replace){
-      match_dat<-match_dat[!(match_dat$row_id %in% unique(sample_neg)),]
+      match_dat<-match_dat[!(match_dat$row_id %in% unique(sample_neg2)),]
     }
   }
   return(boots_samp)
