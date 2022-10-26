@@ -192,6 +192,7 @@ strata_sample<-function(ref_dat, #reference dataset
     sample_reconst<-ref_match %>%
       inner_join(match_dat %>% select(all_of(col_sel)),
                 by="row_id") %>%
+      select(-row_id) %>%
       mutate(boots_rnd=k)
 
     # stack bootstrapped sample
