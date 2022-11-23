@@ -1,15 +1,18 @@
 #########################################
 ## utility functions for data analysis ##
-#########################################
+#########################################         
 
-# multiclass y is not supported yet!
+# multiclass y is not supported yet!  
 # data_type should be a vector of "cat" or "num"
 #require (purrr,broom,tibble)
-univar_analysis_mixed<-function(id,grp=1,X,data_type,pretty=F){
-  if(ncol(X)!=length(data_type)){
-    stop("data types of X need to be specified")
+univar_analysis_mixed<-function(df,id,grp=1,var_lst,facvar_lst,pretty=F){
+  if(!all(facvar_lst %in% var_lst)){
+    stop("facvar_lst must be subset of var_lst!")
   }
-   
+  X<-df[,var_lst]
+  data_type<-rep("num",length(var_lst))
+  data_type[which(var_lst %in% facvar_lst,arr.ind = T)]<-"cat"
+
   # anova - numerical variables
   df_num<-data.frame(cbind(id,grp,X[,(data_type=="num"),drop=F]),stringsAsFactors=F) %>%
     gather(var,val,-grp,-id) %>%
