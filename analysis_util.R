@@ -5,11 +5,12 @@
 # multiclass y is not supported yet!  
 # data_type should be a vector of "cat" or "num"
 #require (purrr,broom,tibble)
-univar_analysis_mixed<-function(df,id,grp=1,var_lst,facvar_lst,pretty=F){
+univar_analysis_mixed<-function(df,id_col="PATID",grp=1,var_lst,facvar_lst,pretty=F){
   if(!all(facvar_lst %in% var_lst)){
     stop("facvar_lst must be subset of var_lst!")
   }
   X<-df[,var_lst]
+  id<-unlist(df[,id_col])
   data_type<-rep("num",length(var_lst))
   data_type[which(var_lst %in% facvar_lst,arr.ind = T)]<-"cat"
 
