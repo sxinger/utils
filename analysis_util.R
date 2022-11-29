@@ -1,6 +1,63 @@
 #########################################
 ## utility functions for data analysis ##
-#########################################         
+#########################################
+# p-value calculators based on sample summaries
+pval_on_summ_2sampleprop<-function(v1, #=c(n1,p1)
+                                   v2, #=c(n2,p2)
+                                   pooled=TRUE,
+                                   alternative="both"){
+  n1<-v1[1]
+  p1<-v1[2]
+  n2<-v2[1]
+  p2<-v2[2]
+  if(pooled){
+    p<-(p1*n1+p2*n2)/(n1+n2)
+    se<-sqrt(p*(1-p)*(1/n1+1/n2))
+  }else{
+    se<-sqrt(p1*(1-p1)/n1+p2*(1-p2)/n2)
+  }
+  z<-(p1-p2)/se
+  
+  if(alternative=="lower"){
+    pval<-pnorm(z,lower.tail = TRUE)
+  }else if(alternative=="upper"){
+    pval<-pnorm(z,lower.tail = FALSE)
+  }else{
+    pval<-2*pnorm(abs(z),lower.tail = FALSE)
+  }
+  
+  return(data.frame(z=z,pval=pval))
+}
+
+pval_on_summ_2sample<-function(v1, #=c(n1,m1,s1)
+                               v2, #=c(n2,m2,s2)
+                               pooled=FALSE,
+                               alternative="both"){
+  n1<-v1[1]
+  m1<-v1[2]
+  s1<-v1[3]
+  n2<-v2[1]
+  m2<-v2[2]
+  s2<-v2[3]
+  if(pooled){
+    se<-sqrt(((n1-1)*s1^2+(n2-1)*s2^2)/(n1+n2-2))
+  }else{
+    se<-sqrt(s1^2/n1+s2^2/n2)
+  }
+  
+  t<-(m1-m2)/se
+  df<-n1+n2-2
+  
+  if(alternative=="lower"){
+    pval<-pt(t,df,lower.tail = TRUE)
+  }else if(alternative=="upper"){
+    pval<-pt(t,df,lower.tail = FALSE)
+  }else{
+    pval<-2*pt(abs(t),df,lower.tail = FALSE)
+  }
+  
+  return(data.frame(t=t,df=df,pval=pval))
+}
 
 # multiclass y is not supported yet!  
 # data_type should be a vector of "cat" or "num"
