@@ -147,11 +147,11 @@ univar_analysis_mixed<-function(df,id_col="PATID",grp=1,var_lst,facvar_lst,prett
     spread(grp,val) %>%
     bind_rows(out_num %>%
                 mutate(label2=paste0(round(val_mean,1)," (",round(val_sd,1),")"," [",round(val_miss/n,2),"]")) %>%
-                dplyr::dplyr::select(var,grp,p.value,label2) %>% spread(grp,label2)) %>%
+                dplyr::select(var,grp,p.value,label2) %>% spread(grp,label2)) %>%
     bind_rows(out_cat %>%
                 unite("var",c("var","val"),sep="=") %>%
                 mutate(label2=paste0(n," (",round(prop*100,1),"%)"," [",round(val_miss/n,2),"]")) %>%
-                dplyr::dplyr::select(var,grp,p.value,label2) %>% spread(grp,label2)) %>%
+                dplyr::select(var,grp,p.value,label2) %>% spread(grp,label2)) %>%
     mutate(p.value=round(p.value,4)) %>%
     separate("var",c("var","cat"),sep="=",extra="merge",fill="right") %>%
     mutate(cat=case_when(var=="n" ~ "",
