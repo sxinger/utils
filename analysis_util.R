@@ -98,7 +98,7 @@ univar_analysis_mixed<-function(df,id_col="PATID",grp=1,var_lst,facvar_lst,prett
                            tidied=map(fit,tidy)) %>%
                     unnest(tidied) %>% 
                     filter(!is.na(p.value)) %>%
-                    select(var,p.value),
+                    dplyr::select(var,p.value),
                   by="var") 
     } else {
       out_num %<>% mutate(p.value = 1)
@@ -141,17 +141,17 @@ univar_analysis_mixed<-function(df,id_col="PATID",grp=1,var_lst,facvar_lst,prett
   
   # organize into tabulated format
   out<-out_num %>% 
-    select(n,grp) %>% unique %>%
+    dplyr::select(n,grp) %>% unique %>%
     gather(var,val,-grp) %>% 
     mutate(val=as.character(val)) %>% 
     spread(grp,val) %>%
     bind_rows(out_num %>%
                 mutate(label2=paste0(round(val_mean,1)," (",round(val_sd,1),")"," [",round(val_miss/n,2),"]")) %>%
-                dplyr::select(var,grp,p.value,label2) %>% spread(grp,label2)) %>%
+                dplyr::dplyr::select(var,grp,p.value,label2) %>% spread(grp,label2)) %>%
     bind_rows(out_cat %>%
                 unite("var",c("var","val"),sep="=") %>%
                 mutate(label2=paste0(n," (",round(prop*100,1),"%)"," [",round(val_miss/n,2),"]")) %>%
-                dplyr::select(var,grp,p.value,label2) %>% spread(grp,label2)) %>%
+                dplyr::dplyr::select(var,grp,p.value,label2) %>% spread(grp,label2)) %>%
     mutate(p.value=round(p.value,4)) %>%
     separate("var",c("var","cat"),sep="=",extra="merge",fill="right") %>%
     mutate(cat=case_when(var=="n" ~ "",
@@ -171,7 +171,7 @@ univar_analysis_mixed<-function(df,id_col="PATID",grp=1,var_lst,facvar_lst,prett
                               TRUE ~ ""),
               p.value = case_when(keep1row==1 ~ as.character(p.value),
                                   TRUE ~ "")) %>%
-        select(-var_fac,-keep1row) %>%
+        dplyr::select(-var_fac,-keep1row) %>%
         kbl() %>% kable_material(c("striped", "hover"))
   }
   return(out)
