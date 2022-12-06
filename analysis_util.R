@@ -2,10 +2,12 @@
 ## utility functions for data analysis ##
 #########################################
 # p-value calculators based on sample summaries
-pval_on_summ_2sampleprop<-function(v1, #=c(n1,p1)
-                                   v2, #=c(n2,p2)
-                                   pooled=TRUE,
-                                   alternative="both"){
+pval_on_summ_2sampleprop<-function(
+  v1, #=c(n1,p1)
+  v2, #=c(n2,p2)
+  pooled=TRUE,
+  alternative="both"
+){
   n1<-v1[1]
   p1<-v1[2]
   n2<-v2[1]
@@ -29,10 +31,12 @@ pval_on_summ_2sampleprop<-function(v1, #=c(n1,p1)
   return(data.frame(z=z,pval=pval))
 }
 
-pval_on_summ_2sample<-function(v1, #=c(n1,m1,s1)
-                               v2, #=c(n2,m2,s2)
-                               pooled=FALSE,
-                               alternative="both"){
+pval_on_summ_2samplemean<-function(
+  v1, #=c(n1,m1,s1)
+  v2, #=c(n2,m2,s2)
+  pooled=FALSE,
+  alternative="both"
+){
   n1<-v1[1]
   m1<-v1[2]
   s1<-v1[3]
@@ -62,7 +66,16 @@ pval_on_summ_2sample<-function(v1, #=c(n1,m1,s1)
 # multiclass y is not supported yet!  
 # data_type should be a vector of "cat" or "num"
 #require (purrr,broom,tibble)
-univar_analysis_mixed<-function(df,id_col="PATID",grp=1,var_lst,facvar_lst,pretty=F){
+univar_analysis_mixed<-function(
+  df,
+  id_col="PATID",
+  grp=1,
+  var_lst,
+  facvar_lst,
+  pretty=F,
+  var_lbl_df=data.frame(var=as.character(),
+                        var_lbl=as.character()) # optional, pretty=T
+){
   if(!all(facvar_lst %in% var_lst)){
     stop("facvar_lst must be subset of var_lst!")
   }
@@ -159,12 +172,21 @@ univar_analysis_mixed<-function(df,id_col="PATID",grp=1,var_lst,facvar_lst,prett
                           TRUE ~ paste0(cat,",n(%) [miss]"))) 
   #output
   if(pretty){
+      # collect variable label mapping if provided
+      if(nrow(var_lbl_df)<=0){
+        out %<>%
+          left_join(var_lbl_df,by="var") %>%
+          mutate(var_lbl=coalesce(var_lbl,var))
+      }else{
+        out %<>%
+          mutate(var_lbl=var)
+      } 
       # convert to html table output using kable
       colnames(out)<-c("var","cat",paste0("exposure=",sort(unique(grp))),"p.value")
       out %<>% 
         mutate(var_fac=factor(var,ordered = TRUE, levels = c("n",gsub("-",".",var_lst)))) %>%
         arrange(var_fac,cat) %>%
-        group_by(var) %>%
+        group_by(var,var_lbl) %>%
         mutate(keep1row = row_number()) %>%
         ungroup %>%
         mutate(var = case_when(keep1row==1 ~ var,
