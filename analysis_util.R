@@ -106,7 +106,7 @@ univar_analysis_mixed<-function(
     if(length(unique(grp))>1){
       out_num %<>% 
         left_join(df_num %>%
-                    nest(-var) %>%
+                    nest(data=!var) %>%
                     mutate(fit=map(data, ~ aov(val~grp,data=.x)),
                            tidied=map(fit,tidy)) %>%
                     unnest(tidied) %>% 
@@ -182,7 +182,7 @@ univar_analysis_mixed<-function(
           mutate(var_lbl=var)
       } 
       # convert to html table output using kable
-      colnames(out)<-c("var","cat",paste0("exposure=",sort(unique(grp))),"p.value")
+      colnames(out)<-c("var","cat",paste0("exposure=",sort(unique(grp))),"p.value","var_lbl")
       out %<>% 
         mutate(var_fac=factor(var,ordered = TRUE, levels = c("n",gsub("-",".",var_lst)))) %>%
         arrange(var_fac,cat) %>%
