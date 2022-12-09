@@ -191,6 +191,8 @@ univar_analysis_mixed<-function(
         ungroup %>%
         mutate(var = case_when(keep1row==1 ~ var,
                               TRUE ~ ""),
+               var_lbl = case_when(keep1row==1 ~ var_lbl,
+                              TRUE ~ ""),
               p.value = case_when(keep1row==1 ~ as.character(p.value),
                                   TRUE ~ "")) %>%
         dplyr::select(-var_fac,-keep1row) %>%
