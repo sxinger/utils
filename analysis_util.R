@@ -173,7 +173,7 @@ univar_analysis_mixed<-function(
   #output
   if(pretty){
       # collect variable label mapping if provided
-      if(nrow(var_lbl_df)<=0){
+      if(nrow(var_lbl_df)>0){
         out %<>%
           left_join(var_lbl_df,by="var") %>%
           mutate(var_lbl=coalesce(var_lbl,var))
