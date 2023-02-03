@@ -66,10 +66,10 @@ ipw.lasso<-function(
   # loop over yo_vec
   out<-list()
   for(yo_i in seq_along(c(yc,ycs,yo_vec))){
+    yo<-c(yc,ycs,yo_vec)[yo_i]
     ################################################################
     if(verb) sprintf("start propensity analysis for: %s",yo)
     ################################################################
-    yo<-c(yc,ycs,yo_vec)[yo_i]
     out_yo<-list()
     # calculate weight with smoothing
     y<-unlist(data_df[,yo])
