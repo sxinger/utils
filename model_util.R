@@ -55,7 +55,7 @@ ipw.lasso<-function(
   yc = 'TRT', # column name of exposure at center,
   yo_vec = c(""), # vector of other mediators likely on the pathway
   xo_vec = c(""), # vector of other covariates
-  ycs = NULL, # column name of censoring indicator, if informatice censoring needs to be controled
+  ycs = NULL, # column name of censoring indicator, if informative censoring needs to be controled
   family = 'binomial', # ref to legal values for "glmnet"
   type.measure = "class", # ref to legal values for "glmnet"
   verb = TRUE #verbose
