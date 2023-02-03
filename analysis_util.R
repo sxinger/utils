@@ -331,4 +331,14 @@ get_calibr<-function(pred,real,n_bin=20){
   return(calib)
 }
 
+get_stab_summ<-function(){
 
+}
+
+get_perf_summ.surv<-function(){
+
+}
+
+get_calibr.surv<-function(){
+
+}
