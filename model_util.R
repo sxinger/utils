@@ -49,11 +49,11 @@ coxph_stratified<-function(dt,time_col,status_col,
 }
 
 # require(glmnet,islasso)
-iptw.lasso<-function(
+ipw.lasso<-function(
   data_df, # data.frame including id_col, yc, yo_vec, xo_vec
   id_col = 'PATID', # primary key
   yc = 'TRT', # column name of exposure at center,
-  yo_vec = c(""), # vector of other exposures on direct pathway
+  yo_vec = c(""), # vector of other mediators likely on the pathway
   xo_vec = c(""), # vector of other covariates
   ycs = NULL, # column name of censoring indicator, if informatice censoring needs to be controled
   family = 'binomial', # ref to legal values for "glmnet"
@@ -67,7 +67,7 @@ iptw.lasso<-function(
   out<-list()
   for(yo_i in seq_along(c(yc,ycs,yo_vec))){
     ################################################################
-    if(verbose) sfprint("start propensity analysis for: %s",yo)
+    if(verb) sfprint("start propensity analysis for: %s",yo)
     ################################################################
     yo<-c(yc,ycs,yo_vec)[yo_i]
     out_yo<-list()
@@ -87,14 +87,14 @@ iptw.lasso<-function(
       select(id,tw,tw_adj)
     colnames(tw_smth)<-c("id",yo,paste0(yo,"_adj"))
     ################################################################
-    if(verbose) print("...finish generating weights.")
+    if(verb) print("...finish generating weights.")
     ################################################################   
     # decompose propensity score
     fitx<-islasso(y~x,data=data_df,lambda=fit_tw$lambda.min)
     out1<-data.frame(summary(fitx,pval=0.1)$coefficients,stringsAsFactors = F) %>%
       rownames_to_column(var="varx")
     ################################################################
-    if(verbose) print(paste("...finish decomposing propensity."))
+    if(verb) print(paste("...finish decomposing propensity."))
     ################################################################
     # stack results
     out[[yo]]<-list(
@@ -116,7 +116,7 @@ iptw.lasso<-function(
         rownames_to_column(var="varx")
       out_yo[['ps_medi']] = out2
     ################################################################
-      if(verbose) print(paste("...finish mediation analysis."))
+      if(verb) print(paste("...finish mediation analysis."))
     ################################################################
     }
   }
@@ -132,7 +132,7 @@ iptw.lasso<-function(
                                  TRUE ~ 1-tw_comp_adj)) %>%
     arrange(idx) %>% select(id,tw_comp,tw_comp_adj)
   ################################################################
-  if(verbose) print("finish generating composit weights.")
+  if(verb) print("finish generating composit weights.")
   ################################################################
   # stack result
   out[['composit']]<-list(
