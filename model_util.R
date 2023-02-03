@@ -67,7 +67,7 @@ ipw.lasso<-function(
   out<-list()
   for(yo_i in seq_along(c(yc,ycs,yo_vec))){
     ################################################################
-    if(verb) sfprint("start propensity analysis for: %s",yo)
+    if(verb) sprintf("start propensity analysis for: %s",yo)
     ################################################################
     yo<-c(yc,ycs,yo_vec)[yo_i]
     out_yo<-list()
