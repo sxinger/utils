@@ -50,26 +50,32 @@ coxph_stratified<-function(dt,time_col,status_col,
 
 # require(glmnet,islasso)
 iptw.lasso<-function(
-  data_df, #
+  data_df, # data.frame including id_col, yc, yo_vec, xo_vec
   id_col = 'PATID', # primary key
-  yc = '', # column name of exposure at center
-  yo_vec = c(""), # vector of other relevant exposures
+  yc = 'TRT', # column name of exposure at center,
+  yo_vec = c(""), # vector of other exposures on direct pathway
   xo_vec = c(""), # vector of other covariates
+  ycs = NULL, # column name of censoring indicator, if informatice censoring needs to be controled
   family = 'binomial', # ref to legal values for "glmnet"
-  type.measure = "auc" # ref to legal values for "glmnet"
+  type.measure = "class", # ref to legal values for "glmnet"
+  verb = TRUE #verbose
 ){
   # conversion to matrix
   x<-data.matrix(data_df[,xo_vec])
   
   # loop over yo_vec
   out<-list()
-  tw_composit<-c()
-  for(yo in seq_along c(yc,yo_vec)){
+  for(yo_i in seq_along(c(yc,ycs,yo_vec))){
+    ################################################################
+    if(verbose) sfprint("start propensity analysis for: %s",yo)
+    ################################################################
+    yo<-c(yc,ycs,yo_vec)[yo_i]
     out_yo<-list()
     # calculate weight with smoothing
     y<-unlist(data_df[,yo])
-    fit_tw<-cv.glmnet(x=x,y=y,family=family,type.measure = type.measure)
+    fit_tw<-cv.glmnet(x=x,y=y,family=family,type.measure = type.measure,alpha=1)
     tw<-predict(fit_tw, newx = x, s = "lambda.min", type="response")
+    id<-unlist(data_df[,id_col])
     tw_smth<-data.frame(id=id,tw=tw[,1]) %>% 
       mutate(idx=row_number()) %>%
       arrange(tw) %>%  
@@ -80,58 +86,66 @@ iptw.lasso<-function(
       arrange(idx) %>% 
       select(id,tw,tw_adj)
     colnames(tw_smth)<-c("id",yo,paste0(yo,"_adj"))
-
+    ################################################################
+    if(verbose) print("...finish generating weights.")
+    ################################################################   
     # decompose propensity score
     fitx<-islasso(y~x,data=data_df,lambda=fit_tw$lambda.min)
     out1<-data.frame(summary(fitx,pval=0.1)$coefficients,stringsAsFactors = F) %>%
       rownames_to_column(var="varx")
-    
-    out_yo<-list(
+    ################################################################
+    if(verbose) print(paste("...finish decomposing propensity."))
+    ################################################################
+    # stack results
+    out[[yo]]<-list(
       ps_tw = tw_smth,
       ps_decomp = out1
     )
+    if(yo_i==1){
+      tw_composit<-tw_smth
+    }else{
+      tw_composit %<>% inner_join(tw_smth,by="id")
+    }
+    ################################################################
+    # mediator model 
     if(yo != yc){
-      # mediator model
-      xx<-data.matrix(data_df[,c(var_ps,yc)])
-      fit_xx<-cv.glmnet(x=xx,y=y,family=family,type.measure = type.measure)
+      xx<-data.matrix(data_df[,c(xo_vec,yc)])
+      fit_xx<-cv.glmnet(x=xx,y=y,family=family,type.measure = type.measure,alpha=1)
       out_xx<-islasso(y~xx,data=data_df,lambda=fit_xx$lambda.min)
       out2<-data.frame(summary(out_xx)$coefficients,stringsAsFactors = F) %>%
-            rownames_to_column(var="varx")
+        rownames_to_column(var="varx")
       out_yo[['ps_medi']] = out2
+    ################################################################
+      if(verbose) print(paste("...finish mediation analysis."))
+    ################################################################
     }
-
-    # stack results
-    out[[yo]]<-out_yo
-    tw_composit %<>% inner_join(out_yo$ps_tw,by="id")
   }
-  
+  ################################################################
   # calculate composit weight
   tw_composit %<>%
     mutate(tw_comp = eval(parse(paste(yo,collapse="*"))),
-           idx=row_number()) %>%
+          idx=row_number()) %>%
     arrange(tw_comp) %>% 
     mutate(tw_comp_adj=rank(tw_comp)/n()) %>%
     mutate(tw_comp_adj=case_when(y==1 ~ tw_comp_adj,
                                  y==0&tw_comp_adj==1 ~ 1-(tw_comp_adj-0.0001),
                                  TRUE ~ 1-tw_comp_adj)) %>%
     arrange(idx) %>% select(id,tw_comp,tw_comp_adj)
-
-    # stack result
-    out[['composit']]<-list(
-      ps_tw = tw_composit
-    )
-
-    return(out)
-}
-
-knockoff_grpreg<-function(){
-
+  ################################################################
+  if(verbose) print("finish generating composit weights.")
+  ################################################################
+  # stack result
+  out[['composit']]<-list(
+    ps_tw = tw_composit
+  )
+  return(out)
 }
 
 
-boruta_grpreg<-function(){
 
-}
+# knockoff_grpreg<-function(){}
+
+# boruta_grpreg<-function(){}
 
 # #TODO
 # explain_model<-function(){
