@@ -122,9 +122,10 @@ ipw.lasso<-function(
   }
   ################################################################
   # calculate composit weight
+  expr<-paste0("tw_comp=",paste(yo_vec,collapse="*"))
   tw_composit %<>%
-    mutate(tw_comp = eval(parse(paste(yo,collapse="*"))),
-          idx=row_number()) %>%
+    mutate(tw_comp := !!rlang::parse_expr(expr)) %>%
+    mutate(idx=row_number()) %>%
     arrange(tw_comp) %>% 
     mutate(tw_comp_adj=rank(tw_comp)/n()) %>%
     mutate(tw_comp_adj=case_when(y==1 ~ tw_comp_adj,
@@ -141,11 +142,49 @@ ipw.lasso<-function(
   return(out)
 }
 
+fast_rfe.coxph<-function(
+  data_df, # data.frame including yc, x_tw, xo_vec
+  time_col='time',
+  status_col='status',
+  yc = 'TRT', # column name of exposure at center,
+  x_tw = 'wt', # column with weights
+  xo_vec = c(""), # vector of other covariates
+  pval_threshold = 0.01,
+  verb = TRUE # verbose
+){
+  insig_n<-length(xo_vec) # init: all other covariates
+  var_sel<-var_ps # init: start with all covariates
+  pval<-0 
+  while(insig_n > 0 & length(var_sel) > 0 & pval <= pval_threshold){
+    # build model
+    fit_frm<-formula(paste0("Surv(",time_col,",",status_col,") ~ ",
+                            paste(c(var_sel, yc), collapse = "+")))
+    wt<-unlist(data_df[,x_wt])
+    fit_mort_msm<-coxph(fit_frm, data = data_df, weights = wt)
+    fit_mort_summ<-summary(fit_mort_msm)$coefficients
+    
+    # update significant feature list
+    var_sel<-row.names(fit_mort_summ)[fit_mort_summ[,6]<=pval_threshold&!is.na(fit_mort_summ[,6])]
+    insig_n<-nrow(fit_mort_summ) - length(var_sel) 
+    pval<-fit_mort_summ[yc,6]
+    
+    # report progress when needed
+    if(verb){
+      print(paste0("significant variables:",length(var_sel),";",
+                   "insignificant variables:",insig_n))
+    }
+  }
+}
 
 
-# knockoff_grpreg<-function(){}
 
-# boruta_grpreg<-function(){}
+# knockoff_grpreg<-function(){
+#
+# }
+
+# boruta_grpreg<-function(){
+#  
+# }
 
 # #TODO
 # explain_model<-function(){

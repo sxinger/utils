@@ -204,7 +204,11 @@ univar_analysis_mixed<-function(
 }
 
 # require(ROCR,pROC)
-get_perf_summ<-function(pred,real,keep_all_cutoffs=F){
+get_perf_summ<-function(
+  pred,
+  real,
+  keep_all_cutoffs=F
+){
   # various performace table
   pred_obj<-ROCR::prediction(pred,real)
   
@@ -308,7 +312,18 @@ get_perf_summ<-function(pred,real,keep_all_cutoffs=F){
   return(out)
 }
 
-get_calibr<-function(pred,real,n_bin=20){
+# require(cms,survAUC)
+get_perf_summ.surv<-function(
+  
+){
+
+}
+
+get_calibr<-function(
+  pred,
+  real,
+  n_bin=20
+){
   calib<-data.frame(pred=pred,
                     y=real) %>%
     arrange(pred) %>%
@@ -332,10 +347,6 @@ get_calibr<-function(pred,real,n_bin=20){
 }
 
 get_stab_summ<-function(){
-
-}
-
-get_perf_summ.surv<-function(){
 
 }
 
