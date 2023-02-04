@@ -314,7 +314,9 @@ get_perf_summ<-function(
 
 # require(cms,survAUC)
 get_perf_summ.surv<-function(
-  
+  pred,
+  real,
+  t_seq=seq(1,10,1)
 ){
 
 }
@@ -346,10 +348,114 @@ get_calibr<-function(
   return(calib)
 }
 
-get_stab_summ<-function(){
+get_calibr.surv<-function(){
 
 }
 
-get_calibr.surv<-function(){
-
+get_stab_summ<-function(rank_lst,
+                         var_colnm="var",
+                         rank_colnm="rk",
+                         metric=c("kuncheva",
+                                  "wci",
+                                  "wci_rel"),
+                         f=NULL,
+                         d=NULL){
+  
+  K<-length(rank_lst)
+  varlst<-c()
+  rk_stack<-c()
+  
+  for(i in 1:K){
+    #subset and reorder columns so that var_colnm is the 1st column
+    varlst_i<-rank_lst[[i]][,c(var_colnm,rank_colnm)]
+    #rename column for easy referring
+    varlst_i<-setNames(varlst_i,c("var","rk"))
+    #collect all distinct features
+    varlst<-unique(c(varlst,varlst_i$var))
+    #stack feature rankings
+    rk_stack %<>% 
+      bind_rows(varlst_i %>% 
+                  mutate(mod_idx=i) %>%
+                  mutate(p=nrow(varlst_i))) #add model index
+  }
+  
+  if(metric=="kuncheva"){
+    if(is.null(f)){
+      f<-length(varlst)
+    }
+    
+    if(is.null(d)){
+      d<-round(f/2)
+    }
+    
+    #kalousis and kuncheva index
+    pairwise_fset<-c()
+    for(i in 1:(K-1)){
+      for(j in (i+1):K){
+        ki_new<-rk_stack %>%
+          filter(mod_idx %in% c(i,j)) %>%
+          filter(rk<=d) %>%
+          dplyr::select(var,mod_idx) %>%
+          mutate(pair_idx=paste0(i,"_",j)) %>%
+          mutate(mod_idx=ifelse(mod_idx==i,"ki","kj"),ref=1) %>%
+          unique %>% spread(mod_idx,ref,fill=0) %>%
+          mutate(inter=ki*kj,union=((ki+kj)>=1)*1)
+        
+        pairwise_fset %<>%
+          bind_rows(ki_new)
+      }
+    }
+    
+    stb_idx<-pairwise_fset %>%
+      group_by(pair_idx) %>%
+      summarize(inter_cnt=sum(inter),
+                union_cnt=sum(union),
+                .groups="drop") %>%
+      summarize(ki_unscale=sum((inter_cnt*f-d^2)/(d*(f-d)))*(2/(K*(K-1))),
+                .groups="drop") %>%
+      mutate(ki=(ki_unscale-(-1))/(1-(-1))) #scale index to 0,1 range
+  }
+  
+  else if(metric=="wci"){
+    #weighted consistency index
+    stb_idx<-rk_stack %>%
+      group_by(var) %>% 
+      dplyr::summarize(phi_f=n(),.groups="drop") %>%
+      dplyr::mutate(N=sum(phi_f)) %>%
+      dplyr::mutate(phi_f_wt=(phi_f/N)*((phi_f-1)/(K-1))) %>%
+      group_by(N) %>%
+      dplyr::summarize(cw=sum(phi_f_wt),
+                       .groups="drop") %>%
+      select(cw) 
+  }
+  
+  else if(metric=="wci_rel"){
+    #(relative) weighted consistency index
+    if(is.null(f)){
+      f<-length(varlst)
+    }
+    
+    stb_idx<-rk_stack %>%
+      group_by(var) %>% 
+      dplyr::summarize(phi_f=n(),
+                       .groups="drop") %>%
+      dplyr::mutate(N=sum(phi_f)) %>%
+      ungroup %>%
+      dplyr::mutate(phi_f_wt=(phi_f/N)*((phi_f-1)/(K-1))) %>%
+      group_by(N) %>%
+      dplyr::summarize(cw=sum(phi_f_wt),
+                       .groups="drop") %>%
+      mutate(D=N %% f,
+             H=N %% K) %>%
+      mutate(cw_min=(N^2-f*(N-D)-D^2)/(f*N*(K-1)),
+             cw_max=(H^2+N*(K-1)-H*K)/(N*(K-1))) %>%
+      mutate(cw_rel=(cw-cw_min)/(cw_max-cw_min)) %>%
+      select(cw_rel) 
+  }
+  
+  else{
+    stop("stability index calculation method is not supported!")
+  }
+  
+  return(stb_idx)
 }
