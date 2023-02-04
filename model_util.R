@@ -142,6 +142,7 @@ ipw.lasso<-function(
   return(out)
 }
 
+# require(survival,survminer)
 fast_rfe.coxph<-function(
   data_df, # data.frame including yc, x_tw, xo_vec
   time_col='time', # time column reuiqred for Surv() object
@@ -160,7 +161,7 @@ fast_rfe.coxph<-function(
     fit_frm<-formula(paste0("Surv(",time_col,",",status_col,") ~ ",
                             paste(c(var_sel, yc), collapse = "+")))
     wt<-unlist(data_df[,x_wt])
-    fit_mort_msm<-coxph(fit_frm, data = data_df, weights = wt)
+    fit_mort_msm<-coxph(fit_frm, data = data_df, weights = 1/wt)
     fit_mort_summ<-summary(fit_mort_msm)$coefficients
     
     # update significant feature list
@@ -174,7 +175,20 @@ fast_rfe.coxph<-function(
                    "insignificant variables:",insig_n))
     }
   }
-  return(var_sel)
+  # build final model with selected feature set
+  fit_sel<-coxph(formula(paste0("Surv(",time_col,",",status_col,") ~ ",
+                                 paste(unique(c(var_sel, yc)), collapse = "+"))),
+                  data = data_df, weights = 1/wt)
+  # quick inspection
+  plot_sel<-ggforest(fit_sel,data = data_df)
+  # result list
+  out<-list(
+    var_sel = var_sel,
+    fit_sel = fit_sel,
+    plot_sel = plot_sel
+  )
+
+  return(out)
 }
 
 # bayeopt_xgb<-function(
