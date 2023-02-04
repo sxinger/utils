@@ -147,7 +147,7 @@ fast_rfe.coxph<-function(
   time_col='time', # time column reuiqred for Surv() object
   status_col='status', # stauts column reuiqred for Surv() object
   yc = 'TRT', # column name of exposure at center,
-  x_tw = 'wt', # column with weights
+  x_wt = 'wt', # column with weights
   xo_vec = c(""), # vector of other covariates to be selected
   pval_threshold = 0.01,
   verb = TRUE # verbose
