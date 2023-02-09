@@ -312,15 +312,6 @@ get_perf_summ<-function(
   return(out)
 }
 
-# require(cms,survAUC)
-get_perf_summ.surv<-function(
-  pred,
-  real,
-  t_seq=seq(1,10,1)
-){
-
-}
-
 get_calibr<-function(
   pred,
   real,
@@ -348,8 +339,62 @@ get_calibr<-function(
   return(calib)
 }
 
-get_calibr.surv<-function(){
+# require(survival,SurvMetrics)
+get_perf_summ.surv<-function(
+  model,   # coxph model object
+  data_ts, # testing data set
+  time_col,
+  status_col,
+  eval_times = seq(1:10,1) # time of interests
+){
+  # cindex 1 
+  data_ts[,"pred"]<-predict(model,
+                            newdata = data_ts,
+                            type="expected")
+  calib<-coxph(formula(paste0("Surv(",time_col,status_col,") ~ pred")),
+               data = data_ts)
+  cindex1<-summary(calib)$concordance
+  
+  # cindex 2
+  mat_cox<-predictSurvProb(calib, data_ts, eval_times)
+  med_index = median(1:length(eval_times))
+  surv_obj = Surv(test_data[,"time_col"], test_data[,"status_col"])
+  cindex2<-Cindex(surv_obj, predicted = mat_cox[, med_index])
 
+  # Brier score
+  t_star = median(eval_times)
+  brier<-Brier(surv_obj, pre_sp = mat_cox[, med_index], t_star)
+
+  # Integrated Brier score 
+  int_brier<-IBS(surv_obj, sp_matrix = mat_cox, eval_times)
+
+  # return results
+  out<-list(
+    cindex1 = cindex1,
+    cindex2 = cindex2,
+    brier =  brier,
+    int_brier = int_brier
+  )
+  return(out)
+}
+
+# require(SurvMetrics)
+get_calibr.surv<-function(
+  model,   # coxph model object
+  data_ts, # testing data set
+  time_col,
+  status_col,
+  eval_times = seq(1:10,1) # time of interests
+){
+  mat_pred<-c()
+  for(t in eval_times){
+    data_ts[,time_col]<-t
+    pred<-predict(model,
+                  newdata=ts,
+                  type="expected")
+    mat_pred<-cbind(mat_pred,pred)
+  }
+  
 }
 
 get_stab_summ<-function(rank_lst,
