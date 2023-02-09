@@ -392,9 +392,17 @@ get_calibr.surv<-function(
     pred<-predict(model,
                   newdata=ts,
                   type="expected")
-    mat_pred<-cbind(mat_pred,pred)
+    mat_pred<-rbind(mat_pred,pred)
   }
-  
+  fit_frm<-formula(paste0("Surv(",time_col,",",status_col,") ~ 1"))
+  surfit_obs<-summary(survfit(fit_frm,data=data_ts,times=eval_times))
+  pred_vs_obs<-data.frame(
+    t = eval_times,
+    pred = mat_pred %>% mutate(pred_t=rowSums(.)/length(eval_times)),
+    obs = surfit_obs[,"surv"]
+  )
+  # return results
+  return(pred_vs_obs)
 }
 
 get_stab_summ<-function(rank_lst,
