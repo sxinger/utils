@@ -345,28 +345,39 @@ get_perf_summ.surv<-function(
   data_ts, # testing data set
   time_col,
   status_col,
-  eval_times = seq(1:10,1) # time of interests
+  eval_times = seq(90,90*4*3,by=90) # time of interests
 ){
-  # cindex 1 
+  # cindex1 
   data_ts[,"pred"]<-predict(model,
                             newdata = data_ts,
                             type="expected")
-  calib<-coxph(formula(paste0("Surv(",time_col,status_col,") ~ pred")),
+  calib<-coxph(formula(paste0("Surv(",time_col,',',status_col,") ~ pred")),
                data = data_ts)
   cindex1<-summary(calib)$concordance
-  
-  # cindex 2
-  mat_cox<-predictSurvProb(calib, data_ts, eval_times)
-  med_index = median(1:length(eval_times))
-  surv_obj = Surv(test_data[,"time_col"], test_data[,"status_col"])
-  cindex2<-Cindex(surv_obj, predicted = mat_cox[, med_index])
+ 
+  # cindex2
+  pred_med<-predict(model,
+                    newdata = data_ts,
+                    type="expected")
+  surv_obj = Surv(unlist(data_ts[,time_col]), unlist(data_ts[,status_col]))
+  cindex2<-Cindex(surv_obj, predicted = pred_med)
 
   # Brier score
-  t_star = median(eval_times)
-  brier<-Brier(surv_obj, pre_sp = mat_cox[, med_index], t_star)
+  survfit_obj<-survfit(formula(paste0("Surv(",time_col,',',status_col,") ~ 1")),
+                     data = data_ts)
+  t_star<-survfit_obj$time[which.min(abs(survfit_obj$surv-0.5))]
+  brier<-Brier(surv_obj, pre_sp = pred_med, t_star)
 
   # Integrated Brier score 
-  int_brier<-IBS(surv_obj, sp_matrix = mat_cox, eval_times)
+  mat_pred<-c()
+  for(t in eval_times){
+    data_ts[,time_col]<-t
+    pred<-predict(model,
+                  newdata=ts,
+                  type="expected")
+    mat_pred<-rbind(mat_pred,pred)
+  }
+  int_brier<-IBS(surv_obj, sp_matrix = mat_pred, eval_times)
 
   # return results
   out<-list(
@@ -384,7 +395,7 @@ get_calibr.surv<-function(
   data_ts, # testing data set
   time_col,
   status_col,
-  eval_times = seq(1:10,1) # time of interests
+  eval_times = seq(90,90*4*3,by=90) # time of interests
 ){
   mat_pred<-c()
   for(t in eval_times){
