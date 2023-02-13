@@ -399,7 +399,7 @@ get_calibr.surv<-function(
 ){
   # observed 
   fit_frm<-formula(paste0("Surv(",time_col,",",status_col,") ~ 1"))
-  surfit_obs<-summary(survfit(fit_frm,data=data_ts,times=eval_times))
+  surfit_obs<-summary(survfit(fit_frm,data=data_ts),times=eval_times)
   # predicted
   mat_pred<-c()
   for(t in eval_times){
