@@ -375,7 +375,7 @@ get_perf_summ.surv<-function(
     pred<-predict(model,
                   newdata=ts,
                   type="expected")
-    mat_pred<-rbind(mat_pred,pred)
+    mat_pred<-cbind(mat_pred,pred)
   }
   int_brier<-IBS(surv_obj, sp_matrix = mat_pred, eval_times)
 
@@ -409,7 +409,9 @@ get_calibr.surv<-function(
   surfit_obs<-summary(survfit(fit_frm,data=data_ts,times=eval_times))
   pred_vs_obs<-data.frame(
     t = eval_times,
-    pred = mat_pred %>% mutate(pred_t=rowSums(.)/length(eval_times)),
+    pred = mat_pred %>% 
+              mutate(pred_t=rowSums(.)/nrow(data_ts)) %>%
+              select(pred_t),
     obs = surfit_obs[,"surv"]
   )
   # return results
