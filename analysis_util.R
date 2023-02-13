@@ -397,25 +397,27 @@ get_calibr.surv<-function(
   status_col,
   eval_times = seq(90,90*4*3,by=90) # time of interests
 ){
+  # observed 
+  fit_frm<-formula(paste0("Surv(",time_col,",",status_col,") ~ 1"))
+  surfit_obs<-summary(survfit(fit_frm,data=data_ts,times=eval_times))
+  # predicted
   mat_pred<-c()
   for(t in eval_times){
     data_ts[,time_col]<-t
-    pred<-predict(model,
-                  newdata=ts,
-                  type="expected")
-    mat_pred<-rbind(mat_pred,pred)
+    pred<-predict(model,newdata=data_ts,
+                  type="survival",se.fit=TRUE)
+    mat_pred %<>%
+      bind_rows(
+        data.frame(
+          t = t,
+          pred = mean(pred$fit),
+          se_pred = 0.5*sd(pred$fit)+0.5*mean(pred$se.fit)
+        )
+      )
   }
-  fit_frm<-formula(paste0("Surv(",time_col,",",status_col,") ~ 1"))
-  surfit_obs<-summary(survfit(fit_frm,data=data_ts,times=eval_times))
-  pred_vs_obs<-data.frame(
-    t = eval_times,
-    pred = mat_pred %>% 
-              mutate(pred_t=rowSums(.)/nrow(data_ts)) %>%
-              select(pred_t),
-    obs = surfit_obs[,"surv"]
-  )
   # return results
-  return(pred_vs_obs)
+  mat_pred %<>% mutate(obs = surfit_obs[["surv"]])
+  return(mat_pred)
 }
 
 get_stab_summ<-function(rank_lst,
