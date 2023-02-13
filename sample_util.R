@@ -4,7 +4,7 @@
 ###########################################
 
 #exact matching with coarsening, with/without replacement
-matched_sample<-function(case_ref,
+matched_sample.exact<-function(case_ref,
                          ctrl_pool,
                          id_col,
                          exact=c(),
@@ -141,7 +141,7 @@ matched_sample<-function(case_ref,
 
 #one-hot coding is required!
 #require (RANN, data.table)
-strata_sample<-function(ref_dat, #reference dataset
+matched_sample.nn<-function(ref_dat, #reference dataset
                         match_dat, #matching dataset
                         keep_col="patient_num",
                         compare_metric=c("age","sex"), #matching criteria
@@ -171,30 +171,28 @@ strata_sample<-function(ref_dat, #reference dataset
     sample_neg2<-match_dat[sample_neg,]$row_id
     idx_map<-data.frame(pos_idx=sample_pos,neg_idx=sample_neg2)
     
-    # update certain field by copying matched value from ref_dat
-    ref_match<-match_dat[sample_neg,c("row_id",update_match_metric)]
+    # reconstruct stratified samples
+    col_sel<-c("row_id",compare_metric,keep_col)
     if(!is.null(update_match_metric)){
-      ref_match<-ref_match %>%
+      # update certain field by copying matched value from ref_dat
+      ref_match<-match_dat[sample_neg,c("row_id",update_match_metric)] %>%
         inner_join(idx_map,by=c("row_id"="neg_idx")) %>%
-        unique
-      ref_match<-ref_match %>%
+        unique %>%
         select(-all_of(update_match_metric)) %>%
         inner_join(ref_dat %>% select(all_of(c("row_id",update_match_metric))),
                   by=c("pos_idx"="row_id")) %>%
         select(-pos_idx)
+      if(update_match_metric %in% col_sel){
+        col_sel<-col_sel[!col_sel %in% update_match_metric]
+      }
+      sample_reconst<-ref_match %>%
+        inner_join(match_dat %>% select(all_of(col_sel)),by="row_id") 
+    }else{
+      sample_reconst<-match_dat %>% select(all_of(col_sel))
     }
-
-    # reconstruct stratified samples
-    col_sel<-c("row_id",compare_metric,keep_col)
-    if(!is.null(update_match_metric)&&update_match_metric %in% col_sel){
-      col_sel<-col_sel[!col_sel %in% update_match_metric]
-    }
-    sample_reconst<-ref_match %>%
-      inner_join(match_dat %>% select(all_of(col_sel)),
-                by="row_id") %>%
-      select(-row_id) %>%
-      mutate(boots_rnd=k)
-
+    sample_reconst %<>%
+      select(-row_id) %>% mutate(boots_rnd=k)
+    
     # stack bootstrapped sample
     boots_samp<-rbind(boots_samp,sample_reconst)
     if(verb){
