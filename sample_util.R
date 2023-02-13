@@ -186,7 +186,7 @@ strata_sample<-function(ref_dat, #reference dataset
 
     # reconstruct stratified samples
     col_sel<-c("row_id",compare_metric,keep_col)
-    if(update_match_metric %in% col_sel){
+    if(!is.null(update_match_metric)&&update_match_metric %in% col_sel){
       col_sel<-col_sel[!col_sel %in% update_match_metric]
     }
     sample_reconst<-ref_match %>%
