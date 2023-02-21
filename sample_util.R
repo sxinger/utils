@@ -176,7 +176,7 @@ matched_sample.nn<-function(ref_dat, #reference dataset
     if(!is.null(update_match_metric)){
       # update certain field by copying matched value from ref_dat
       ref_match<-match_dat[sample_neg,c("row_id",update_match_metric)] %>%
-        inner_join(idx_map,by=c("row_id"="neg_idx")) %>%
+        inner_join(idx_map,by=c("row_id"="neg_idx"),multiple = "all") %>%
         unique %>%
         select(-all_of(update_match_metric)) %>%
         inner_join(ref_dat %>% select(all_of(c("row_id",update_match_metric))),
