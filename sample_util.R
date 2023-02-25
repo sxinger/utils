@@ -238,7 +238,7 @@ matched_sample.ptdm<-function(
   col_sel<-c(id_col,update_col)
   ref_sub<-ref_dat[,col_sel]
   match_sub<-match_dat[,col_sel]
-  if(!all(col_sel %in% columns(ref_sub)) || !all(col_sel %in% columns(match_sub))){
+  if(!all(col_sel %in% colnames(ref_sub)) || !all(col_sel %in% colnames(match_sub))){
     stop("at least one required column is missing from either ref_dat or match_dat!")
   }
  
