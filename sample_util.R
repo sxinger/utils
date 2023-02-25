@@ -3,19 +3,25 @@
 ## utility functions for sampling frame  ##
 ###########################################
 
-#exact matching with coarsening, with/without replacement
-matched_sample.exact<-function(case_ref,
-                         ctrl_pool,
-                         id_col,
-                         exact=c(),
-                         coarse=c(),
-                         coarse_range=c(),
-                         other_cov=c(),
-                         weighting_scheme=c("weighted","hiearchical"),
-                         wt=c(1),
-                         match_rt=match_rt,
-                         replace=FALSE,
-                         verbose=TRUE){
+matched_sample.exact<-function(
+  ref_dat, #reference dataset
+  match_dat, #matching dataset
+  id_col,
+  exact=c(),
+  coarse=c(),
+  coarse_range=c(),
+  other_cov=c(),
+  weighting_scheme=c("weighted","hiearchical"),
+  wt=c(1),
+  match_rt=match_rt,
+  replace=FALSE,
+  verbose=TRUE
+){
+  ###
+  #exact matching with coarsening, with/without replacement
+  #require (tidyverse,RANN,data.table)
+  ###
+
   #only keep relavant columns
   case_ref %<>% select(c(id_col,exact,coarse,other_cov))
   ctrl_pool %<>% select(c(id_col,exact,coarse,other_cov))
@@ -139,18 +145,24 @@ matched_sample.exact<-function(case_ref,
   return(ctrl_match_undup)
 }
 
-#one-hot coding is required!
-#require (RANN, data.table)
-matched_sample.nn<-function(ref_dat, #reference dataset
-                        match_dat, #matching dataset
-                        keep_col="patient_num",
-                        compare_metric=c("age","sex"), #matching criteria
-                        update_match_metric=NULL, #copy values of matching sample from ref_dat
-                        boots=5,
-                        nnk=boots+1, #number of candidate neighbors, recommend:nnk>=boots
-                        searchtype=c("standard", "priority", "radius"),
-                        replace=F,
-                        verb=T){
+matched_sample.nn<-function(
+  ref_dat, #reference dataset
+  match_dat, #matching dataset
+  id_col="patient_num",
+  match_col=c("age","sex"), #matching criteria
+  update_col=NULL, #copy values of matching sample from ref_dat
+  keep_col=c(), #other columnes to be kept besides id_col, match_col
+  boots=5,
+  nnk=boots+1, #number of candidate neighbors, recommend:nnk>=boots
+  searchtype=c("standard", "priority", "radius"),
+  replace=FALSE,
+  verb=TRUE
+){
+  ###
+  #one-hot coding is required!
+  #require (tidyverse,RANN,data.table)
+  ###
+
   #attach row_id
   ref_dat$row_id<-1:nrow(ref_dat)
   match_dat$row_id<-(nrow(ref_dat)+1):(nrow(ref_dat)+nrow(match_dat))
@@ -164,26 +176,26 @@ matched_sample.nn<-function(ref_dat, #reference dataset
 
     # identify k-nearest-neighbour
     sample_pos<-ref_dat$row_id
-    sample_neg<-nn2(match_dat[,compare_metric],
-                    ref_dat[,compare_metric],
+    sample_neg<-nn2(match_dat[,match_col],
+                    ref_dat[,match_col],
                     k=nnk,
                     searchtype=searchtype)$nn.idx[,sample(seq_len(nnk),1)] #inject randomness
     sample_neg2<-match_dat[sample_neg,]$row_id
     idx_map<-data.frame(pos_idx=sample_pos,neg_idx=sample_neg2)
     
     # reconstruct stratified samples
-    col_sel<-c("row_id",compare_metric,keep_col)
-    if(!is.null(update_match_metric)){
+    col_sel<-c("row_id",match_col,id_col,keep_col)
+    if(!is.null(update_col)){
       # update certain field by copying matched value from ref_dat
-      ref_match<-match_dat[sample_neg,c("row_id",update_match_metric)] %>%
+      ref_match<-match_dat[sample_neg,c("row_id",update_col)] %>%
         inner_join(idx_map,by=c("row_id"="neg_idx"),multiple = "all") %>%
         unique %>%
-        select(-all_of(update_match_metric)) %>%
-        inner_join(ref_dat %>% select(all_of(c("row_id",update_match_metric))),
+        select(-all_of(update_col)) %>%
+        inner_join(ref_dat %>% select(all_of(c("row_id",update_col))),
                   by=c("pos_idx"="row_id")) %>%
         select(-pos_idx)
-      if(update_match_metric %in% col_sel){
-        col_sel<-col_sel[!col_sel %in% update_match_metric]
+      if(update_col %in% col_sel){
+        col_sel<-col_sel[!col_sel %in% update_col]
       }
       sample_reconst<-ref_match %>%
         inner_join(match_dat %>% select(all_of(col_sel)),by="row_id") 
@@ -207,3 +219,54 @@ matched_sample.nn<-function(ref_dat, #reference dataset
   }
   return(boots_samp)
 }
+
+matched_sample.ptdm<-function(
+  ref_dat, #reference dataset
+  match_dat, #matching dataset
+  id_col="patid",
+  update_col="time", #copy values of matching sample from ref_dat
+  boots=5,
+  replace=FALSE,
+  verb=TRUE
+){
+  ###
+  #one-hot coding is required!
+  #require (tidyverse)
+  ###
+
+  #only take out columns used for matching
+  col_sel<-c(id_col,update_col)
+  ref_sub<-ref_dat[,col_sel]
+  match_sub<-match_dat[,col_sel]
+  if(!all(col_sel %in% columns(ref_sub)) || !all(col_sel %in% columns(match_sub))){
+    stop("at least one required column is missing from either ref_dat or match_dat!")
+  }
+ 
+  #start bootstrapping
+  boots_samp<-list()
+  for(k in 1:boots){
+    start_k<-Sys.time()
+    if(verb){
+      cat("bootstrapped sample:",k,"\n")
+    }
+   
+    # create immortal-time debiased sample
+    sample_neg<-data.frame(
+      rowid=sample(match_sub[,id_col],nrow(ref_sub),replace=replace)
+    )
+    match_adj<-sample_neg %>%
+      # left join automatically dup rows
+      left_join(match_sub %>% mutate(rowid=1:n(),by="rowid")) %>%
+      mutate(adj=unlist(ref[,update_col])) %>%
+      mutate(adj_col=get(update_col)+adj) %>%
+      rename_at("adj_col",paste(update_col,"_adj"))
+
+    # stack bootstrapped sample
+    boots_samp[[k]]<-match_adj
+    if(verb){
+      cat("Finish bootstrap sample ",k," in ",
+          Sys.time()-start_k,units(Sys.time()-start_k),"\n")
+    }
+  }
+  return(boots_samp)
+}  
