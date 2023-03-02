@@ -241,6 +241,12 @@ matched_sample.ptdm<-function(
   if(ncol(ref_sub)<2 || ncol(match_sub)<2){
     stop("at least one required column is missing from either ref_dat or match_dat!")
   }
+
+  # enforce sample with replacement when control pool is small
+  if(nrow(ref_sub)>= 0.7*nrow(match_sub)){
+    warning("match_sub size is too small to induce sufficient sample-to-sample differences, force sample WITH REPLACEMENT!")
+    replace = TRUE
+  }
  
   #start bootstrapping
   N<-nrow(match_sub)
