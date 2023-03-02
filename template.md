@@ -37,9 +37,5 @@ knitr::opts_chunk$set(echo = FALSE,    # hide codes
 # File: extract.R
 # Description: pre-analytic data from snowflake to R
 #################################################################
-# Copyright (c) 2021-2025 University of Missouri                   
-# Author: Xing Song, xsm7f@umsystem.edu                            
-# File: preproc.R
-# Description: data preprocess to form final analytic set with
-#              one patient per row
-#################################################################
+
+

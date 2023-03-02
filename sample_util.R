@@ -224,7 +224,8 @@ matched_sample.ptdm<-function(
   ref_dat, #reference dataset
   match_dat, #matching dataset
   id_col="patid",
-  update_col="time", #copy values of matching sample from ref_dat
+  update_ref="time_adj", 
+  update_col="time", 
   boots=5,
   replace=FALSE,
   verb=TRUE
@@ -234,39 +235,58 @@ matched_sample.ptdm<-function(
   #require (tidyverse)
   ###
 
-  #only take out columns used for matching
-  col_sel<-c(id_col,update_col)
-  ref_sub<-ref_dat[,col_sel]
-  match_sub<-match_dat[,col_sel]
-  if(!all(col_sel %in% colnames(ref_sub)) || !all(col_sel %in% colnames(match_sub))){
+  #only take out extactly two columns used for matching
+  ref_sub<-ref_dat[,c(id_col,update_ref)]
+  match_sub<-match_dat[,c(id_col,update_col)]
+  if(ncol(ref_sub)<2 || ncol(match_sub)<2)){
     stop("at least one required column is missing from either ref_dat or match_dat!")
   }
  
   #start bootstrapping
+  N<-nrow(match_sub)
+  match_sub_cp<-match_sub
   boots_samp<-list()
   for(k in 1:boots){
     start_k<-Sys.time()
     if(verb){
       cat("bootstrapped sample:",k,"\n")
     }
-   
-    # create immortal-time debiased sample
-    sample_neg<-data.frame(
-      rowid=sample(match_sub[,id_col],nrow(ref_sub),replace=replace)
-    )
-    match_adj<-sample_neg %>%
-      # left join automatically dup rows
-      left_join(match_sub %>% mutate(rowid=1:n(),by="rowid")) %>%
-      mutate(adj=unlist(ref[,update_col])) %>%
-      mutate(adj_col=get(update_col)+adj) %>%
-      rename_at("adj_col",paste(update_col,"_adj"))
-
+    match_sub<-match_sub_cp
+    n_excld<-N
+    match_adj<-c()
+    attr_rt<-1
+    while(n_excld > 0 && attr_rt>=0.05){
+      if(length(match_adj) > 0){
+        match_sub %<>% anti_join(match_adj,by=id_col)
+      }
+      # create immortal-time debiased sample
+      match_adj_tmp<-match_sub %>%
+        mutate(adj=ref_sub %>% sample_n(nrow(match_sub),replace = replace) %>% pull(update_ref)) %>%
+        mutate(adj_time=get(update_col)-adj) %>%
+        rowid_to_column(var="rowid") %>%
+        select(all_of(c("rowid",id_col,update_col,"adj_time")))
+      
+      # filter out those who didn't survive the pseudo landmark time
+      excld<-match_adj_tmp %>% filter(adj_time <= 0)
+      match_adj %<>% bind_rows(match_adj_tmp %>% filter(adj_time > 0))
+      
+      # iteration criteria
+      n_excld<-nrow(excld)
+      attr_rt<-n_excld/N
+      if(verb){
+        print(paste0(n_excld," remains to be adjusted."))
+      }
+    }
+    # 1:1 ratio between positive and negative samples
+    ref_sub %<>% 
+      sample_n(min(nrow(match_adj),nrow(ref_sub)),replace=FALSE)
+    
     # stack bootstrapped sample
-    boots_samp[[k]]<-match_adj
+    boots_samp[[k]]<-list(pos=ref_sub,neg=match_adj)
     if(verb){
       cat("Finish bootstrap sample ",k," in ",
           Sys.time()-start_k,units(Sys.time()-start_k),"\n")
     }
-  }
+ 
   return(boots_samp)
 }  

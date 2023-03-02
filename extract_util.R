@@ -54,6 +54,8 @@ load_valueset.ncbo<-function(vs_url = "",vs_name_str = ""){
                            stringsAsFactors = F))
   }
   # return data.frame
+  lookup_tbl %<>%
+    
   return(lookup_tbl)
 }
 

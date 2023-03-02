@@ -1,15 +1,16 @@
 ############################################
 ## utility functions for complex modeling ##
 ############################################
-# require(tidyverse,magrittr)
 
-# require(survival)
-coxph_stratified<-function(dt,time_col,status_col,
-                           expos_col="", # column of exposure/intervention
-                           cov_col=list(), # covariate columns for full model
-                           cols_strata=list(),
-                           cols_excld=list() # 1-to-1 mapping with cols_strata
-                           ){
+coxph_stratified<-function(
+  dt,time_col,status_col,
+  expos_col="", # column of exposure/intervention
+  cov_col=list(), # covariate columns for full model
+  cols_strata=list(),
+  cols_excld=list() # 1-to-1 mapping with cols_strata
+){
+  # require(tidyverse,magrittr,survival)
+
   # create strata metadata file
   strata<-c()
   for(i in seq_len(cols_strata)){
@@ -48,7 +49,6 @@ coxph_stratified<-function(dt,time_col,status_col,
   return(result)
 }
 
-# require(glmnet,islasso)
 ipw.lasso<-function(
   data_df, # data.frame including id_col, yc, yo_vec, xo_vec
   id_col = 'PATID', # primary key
@@ -60,6 +60,8 @@ ipw.lasso<-function(
   type.measure = "class", # ref to legal values for "glmnet"
   verb = TRUE #verbose
 ){
+  # require(tidyverse,magrittr,glmnet,islasso)
+
   # conversion to matrix
   x<-data.matrix(data_df[,xo_vec])
   
@@ -142,7 +144,18 @@ ipw.lasso<-function(
   return(out)
 }
 
-# require(survival,survminer)
+ipw.rf<-function(){
+
+}
+
+ipw.gbm<-function(){
+
+}
+
+ipw.ensemble<-function(){
+
+}
+
 fast_rfe.coxph<-function(
   data_df, # data.frame including yc, x_tw, xo_vec
   time_col='time', # time column reuiqred for Surv() object
@@ -153,6 +166,8 @@ fast_rfe.coxph<-function(
   pval_threshold = 0.01,
   verb = TRUE # verbose
 ){
+  # require(tidyverse,magrittr,survival,survminer)
+
   insig_n<-length(xo_vec) # init: all other covariates
   var_sel<-var_ps # init: start with all covariates
   pval<-0 
@@ -190,6 +205,8 @@ fast_rfe.coxph<-function(
 
   return(out)
 }
+
+
 
 # bayeopt_xgb<-function(
 #   df_long,
