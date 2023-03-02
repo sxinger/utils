@@ -238,7 +238,7 @@ matched_sample.ptdm<-function(
   #only take out extactly two columns used for matching
   ref_sub<-ref_dat[,c(id_col,update_ref)]
   match_sub<-match_dat[,c(id_col,update_col)]
-  if(ncol(ref_sub)<2 || ncol(match_sub)<2)){
+  if(ncol(ref_sub)<2 || ncol(match_sub)<2){
     stop("at least one required column is missing from either ref_dat or match_dat!")
   }
  
@@ -287,6 +287,6 @@ matched_sample.ptdm<-function(
       cat("Finish bootstrap sample ",k," in ",
           Sys.time()-start_k,units(Sys.time()-start_k),"\n")
     }
- 
+  }
   return(boots_samp)
 }  
