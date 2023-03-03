@@ -60,7 +60,7 @@ ipw.lasso<-function(
   type.measure = "class", # ref to legal values for "glmnet"
   verb = TRUE #verbose
 ){
-  # require(tidyverse,magrittr,glmnet,islasso)
+  # require(tidyverse,magrittr,glmnet,islasso,scales)
 
   # conversion to matrix
   x<-data.matrix(data_df[,xo_vec])
@@ -78,9 +78,7 @@ ipw.lasso<-function(
     fit_tw<-cv.glmnet(x=x,y=y,family=family,type.measure = type.measure,alpha=1)
     tw<-predict(fit_tw, newx = x, s = "lambda.min", type="response")
     id<-unlist(data_df[,id_col])
-    tw_smth<-data.frame(id=id,tw=tw[,1]) %>% 
-      mutate(idx=row_number()) %>%
-      arrange(tw) %>%  
+    tw_smth<-data.frame(id=id,tw=tw[,1]) %>%  
       mutate(ipw = case_when(y==1&tw==0 ~ NA_real_,
                              y==1 ~ 1/tw,
                              y==0&tw==1 ~ NA_real_,
@@ -89,9 +87,7 @@ ipw.lasso<-function(
                             y==1 ~ 1 - tw,
                             y==0&tw==0 ~ NA_real_,
                             TRUE ~ tw)) %>%
-      replace_na(list(ipw=max(ipw),
-                      ow=min(ow))) %>% 
-      arrange(idx) %>% 
+      mutate(across(c("ipw","ow"), ~replace_na(.x, max(.x, na.rm = TRUE)))) %>% 
       select(id,ipw,ow)
     colnames(tw_smth)<-c("id",yo,paste0(yo,"_ow"))
     ################################################################
@@ -129,9 +125,10 @@ ipw.lasso<-function(
     }
   }
   # calculate composit weight
-  expr<-paste0("tw_sum = ",paste(yo_vec,collapse="+"))
+  expr<-paste0("tw_comp = ",paste(yo_vec,collapse="+"))
   tw_composit %<>%
-    mutate(tw_sum := !!rlang::parse_expr(expr)) 
+    mutate(tw_comp := !!rlang::parse_expr(expr)) %>%
+    mutate(tw_comp_adj = rescale(tw_comp, to=c(0.01,0.99)))
   ################################################################
   if(verb) print("finish generating composit weights.")
   ################################################################
