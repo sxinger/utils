@@ -285,11 +285,11 @@ matched_sample.ptdm<-function(
       }
     }
     # 1:1 ratio between positive and negative samples
-    ref_sub %<>% 
-      sample_n(min(nrow(match_adj),nrow(ref_sub)),replace=FALSE)
+    boots_samp[[k]]<-list(
+      pos=ref_sub %>% sample_n(min(nrow(match_adj),nrow(ref_sub)),replace=FALSE),
+      neg=match_adj %>% sample_n(min(nrow(match_adj),nrow(ref_sub)),replace=FALSE)
+    )
     
-    # stack bootstrapped sample
-    boots_samp[[k]]<-list(pos=ref_sub,neg=match_adj)
     if(verb){
       cat("Finish bootstrap sample ",k," in ",
           Sys.time()-start_k,units(Sys.time()-start_k),"\n")
