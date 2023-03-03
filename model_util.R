@@ -81,13 +81,19 @@ ipw.lasso<-function(
     tw_smth<-data.frame(id=id,tw=tw[,1]) %>% 
       mutate(idx=row_number()) %>%
       arrange(tw) %>%  
-      mutate(tw_adj=rank(tw)/n()) %>%
-      mutate(tw_adj=case_when(y==1 ~ tw_adj,
-                              y==0&tw_adj==1 ~ 1-(tw_adj-0.0001),
-                              TRUE ~ 1-tw_adj)) %>%
+      mutate(ipw = case_when(y==1&tw==0 ~ NA_real_,
+                             y==1 ~ 1/tw,
+                             y==0&tw==1 ~ NA_real_,
+                             TRUE ~ 1/(1-tw)),
+             ow = case_when(y==1&tw==1 ~ NA_real_,
+                            y==1 ~ 1 - tw,
+                            y==0&tw==0 ~ NA_real_,
+                            TRUE ~ tw)) %>%
+      replace_na(list(ipw=max(ipw),
+                      ow=min(ow))) %>% 
       arrange(idx) %>% 
-      select(id,tw,tw_adj)
-    colnames(tw_smth)<-c("id",yo,paste0(yo,"_adj"))
+      select(id,ipw,ow)
+    colnames(tw_smth)<-c("id",yo,paste0(yo,"_ow"))
     ################################################################
     if(verb) print("...finish generating weights.")
     ################################################################   
@@ -122,18 +128,10 @@ ipw.lasso<-function(
     ################################################################
     }
   }
-  ################################################################
   # calculate composit weight
-  expr<-paste0("tw_comp=",paste(yo_vec,collapse="*"))
+  expr<-paste0("tw_sum = ",paste(yo_vec,collapse="+"))
   tw_composit %<>%
-    mutate(tw_comp := !!rlang::parse_expr(expr)) %>%
-    mutate(idx=row_number()) %>%
-    arrange(tw_comp) %>% 
-    mutate(tw_comp_adj=rank(tw_comp)/n()) %>%
-    mutate(tw_comp_adj=case_when(y==1 ~ tw_comp_adj,
-                                 y==0&tw_comp_adj==1 ~ 1-(tw_comp_adj-0.0001),
-                                 TRUE ~ 1-tw_comp_adj)) %>%
-    arrange(idx) %>% select(id,tw_comp,tw_comp_adj)
+    mutate(tw_sum := !!rlang::parse_expr(expr)) 
   ################################################################
   if(verb) print("finish generating composit weights.")
   ################################################################
