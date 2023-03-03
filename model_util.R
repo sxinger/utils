@@ -87,7 +87,8 @@ ipw.lasso<-function(
                             y==1 ~ 1 - tw,
                             y==0&tw==0 ~ NA_real_,
                             TRUE ~ tw)) %>%
-      mutate(across(c("ipw","ow"), ~replace_na(.x, max(.x, na.rm = TRUE)))) %>% 
+      mutate(across(c("ipw"), ~replace_na(.x, max(.x, na.rm = TRUE)))) %>% 
+      mutate(across(c("ow"), ~replace_na(.x, min(.x, na.rm = TRUE)))) %>% 
       select(id,ipw,ow)
     colnames(tw_smth)<-c("id",yo,paste0(yo,"_ow"))
     ################################################################
