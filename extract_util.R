@@ -49,7 +49,7 @@ load_valueset.ncbo<-function(vs_url = "",vs_name_str = ""){
       bind_rows(data.frame(CODE_TYPE=vs[["code_type"]][[cd_type_idx]],
                            CODE_TYPE_CDM=cdm_code_type_map(vs[["code_type"]][cd_type_idx]),
                            CODE_SUBTYPE="exact",
-                           CODE=as.character(vs[["code_list"]][[cd_type_idx]]["code"]),
+                           CODE=vs[["code_list"]][[cd_type_idx]]["code"],
                            CODE_GRP=vs_name_match,
                            stringsAsFactors = F))
   }
