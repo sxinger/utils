@@ -244,7 +244,7 @@ matched_sample.ptdm<-function(
   }
 
   # enforce sample with replacement when control pool is small
-  if(nrow(ref_sub)>= 0.6*nrow(match_sub)){
+  if(!replace && nrow(ref_sub)>= 0.6*nrow(match_sub)){
     warning("match_sub size is too small to induce sufficient sample-to-sample differences, force sample WITH REPLACEMENT!")
     replace = TRUE
   }
@@ -289,7 +289,7 @@ matched_sample.ptdm<-function(
       pos=ref_sub %>% sample_n(min(nrow(match_adj),nrow(ref_sub)),replace=FALSE),
       neg=match_adj %>% sample_n(min(nrow(match_adj),nrow(ref_sub)),replace=FALSE)
     )
-    
+
     if(verb){
       cat("Finish bootstrap sample ",k," in ",
           Sys.time()-start_k,units(Sys.time()-start_k),"\n")
