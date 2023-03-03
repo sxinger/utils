@@ -227,6 +227,7 @@ matched_sample.ptdm<-function(
   update_ref="time_adj", 
   update_col="time", 
   boots=5,
+  attr_rt_bd = 0.05,
   replace=FALSE,
   verb=TRUE
 ){
@@ -243,7 +244,7 @@ matched_sample.ptdm<-function(
   }
 
   # enforce sample with replacement when control pool is small
-  if(nrow(ref_sub)>= 0.7*nrow(match_sub)){
+  if(nrow(ref_sub)>= 0.6*nrow(match_sub)){
     warning("match_sub size is too small to induce sufficient sample-to-sample differences, force sample WITH REPLACEMENT!")
     replace = TRUE
   }
@@ -261,7 +262,7 @@ matched_sample.ptdm<-function(
     n_excld<-N
     match_adj<-c()
     attr_rt<-1
-    while(n_excld > 0 && attr_rt>=0.05){
+    while(n_excld > 0 && attr_rt>=attr_rt_bd){
       if(length(match_adj) > 0){
         match_sub %<>% anti_join(match_adj,by=id_col)
       }
