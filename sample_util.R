@@ -284,7 +284,7 @@ matched_sample.ptdm<-function(
         print(paste0(n_excld," remains to be adjusted."))
       }
     }
-    # 1:1 ratio between positive and negative samples
+    # 1:1 ratio between positive and negative samples (match to smaller set)
     boots_samp[[k]]<-list(
       pos=ref_sub %>% sample_n(min(nrow(match_adj),nrow(ref_sub)),replace=FALSE),
       neg=match_adj %>% sample_n(min(nrow(match_adj),nrow(ref_sub)),replace=FALSE)
