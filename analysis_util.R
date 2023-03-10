@@ -161,7 +161,9 @@ univar_analysis_mixed<-function(
     mutate(val=as.character(val)) %>% 
     spread(grp,val) %>%
     bind_rows(out_num %>%
-                mutate(label2=paste0(round(val_mean,1)," (",round(val_sd,1),")"," [",round(val_miss/n,2),"]")) %>%
+                mutate(label2=paste0(round(val_mean,1)," (",round(val_sd,1),");",
+                                     val_med,"(",val_q1,",",val_q3,")",
+                                    " [",round(val_miss/n,2),"]")) %>%
                 dplyr::select(var,grp,p.value,label2) %>% spread(grp,label2)) %>%
     bind_rows(out_cat %>%
                 unite("var",c("var","val"),sep="=") %>%
