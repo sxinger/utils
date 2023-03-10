@@ -172,7 +172,7 @@ univar_analysis_mixed<-function(
     mutate(p.value=round(p.value,4)) %>%
     separate("var",c("var","cat"),sep="=",extra="merge",fill="right") %>%
     mutate(cat=case_when(var=="n" ~ "",
-                          is.na(cat) ~ "mean(sd) [miss]",
+                          is.na(cat) ~ "mean(sd); med(iqr) [miss]",
                           TRUE ~ paste0(cat,",n(%) [miss]"))) 
   #output
   if(pretty){
