@@ -175,7 +175,7 @@ fast_rfe.coxph<-function(
     if(all(wt==1)){
       result_pos<-5
     }else{
-      result_pos<-6
+      result_pos<-5
     }
     fit_mort_msm<-coxph(fit_frm, data = data_df, weights = 1/wt)
     fit_mort_summ<-summary(fit_mort_msm)$coefficients
