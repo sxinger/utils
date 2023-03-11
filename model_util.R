@@ -181,7 +181,7 @@ fast_rfe.coxph<-function(
     fit_mort_summ<-summary(fit_mort_msm)$coefficients
     
     # update significant feature list
-    var_sel<-row.names(fit_mort_summ)[fit_mort_summ[,6]<=pval_threshold&!is.na(fit_mort_summ[,result_pos])]
+    var_sel<-row.names(fit_mort_summ)[fit_mort_summ[,result_pos]<=pval_threshold&!is.na(fit_mort_summ[,result_pos])]
     insig_n<-nrow(fit_mort_summ) - length(var_sel) 
     pval<-fit_mort_summ[yc,result_pos]
     
