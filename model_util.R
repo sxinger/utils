@@ -172,18 +172,13 @@ fast_rfe.coxph<-function(
     fit_frm<-formula(paste0("Surv(",time_col,",",status_col,") ~ ",
                             paste(c(var_sel, yc), collapse = "+")))
     wt<-unlist(data_df[,x_wt])
-    if(all(wt==1)){
-      result_pos<-5
-    }else{
-      result_pos<-5
-    }
-    fit_mort_msm<-coxph(fit_frm, data = data_df, weights = 1/wt)
+    fit_mort_msm<-coxph(fit_frm, data = data_df, weights = wt)
     fit_mort_summ<-summary(fit_mort_msm)$coefficients
     
     # update significant feature list
-    var_sel<-row.names(fit_mort_summ)[fit_mort_summ[,result_pos]<=pval_threshold&!is.na(fit_mort_summ[,result_pos])]
+    var_sel<-row.names(fit_mort_summ)[fit_mort_summ[,5]<=pval_threshold&!is.na(fit_mort_summ[,5])]
     insig_n<-nrow(fit_mort_summ) - length(var_sel) 
-    pval<-fit_mort_summ[yc,result_pos]
+    pval<-fit_mort_summ[yc,5]
     
     # report progress when needed
     if(verb){
@@ -194,7 +189,7 @@ fast_rfe.coxph<-function(
   # build final model with selected feature set
   fit_sel<-coxph(formula(paste0("Surv(",time_col,",",status_col,") ~ ",
                                  paste(unique(c(var_sel, yc)), collapse = "+"))),
-                  data = data_df, weights = 1/wt)
+                  data = data_df, weights = wt)
   # quick inspection
   plot_sel<-ggforest(fit_sel,data = data_df)
   # result list
