@@ -172,13 +172,18 @@ fast_rfe.coxph<-function(
     fit_frm<-formula(paste0("Surv(",time_col,",",status_col,") ~ ",
                             paste(c(var_sel, yc), collapse = "+")))
     wt<-unlist(data_df[,x_wt])
+    if(all(wt==1)){
+      result_pos<-5
+    }else{
+      result_pos<-6
+    }
     fit_mort_msm<-coxph(fit_frm, data = data_df, weights = 1/wt)
     fit_mort_summ<-summary(fit_mort_msm)$coefficients
     
     # update significant feature list
-    var_sel<-row.names(fit_mort_summ)[fit_mort_summ[,6]<=pval_threshold&!is.na(fit_mort_summ[,6])]
+    var_sel<-row.names(fit_mort_summ)[fit_mort_summ[,6]<=pval_threshold&!is.na(fit_mort_summ[,result_pos])]
     insig_n<-nrow(fit_mort_summ) - length(var_sel) 
-    pval<-fit_mort_summ[yc,6]
+    pval<-fit_mort_summ[yc,result_pos]
     
     # report progress when needed
     if(verb){
