@@ -165,7 +165,7 @@ fast_rfe.coxph<-function(
   # require(tidyverse,magrittr,survival,survminer)
 
   insig_n<-length(xo_vec) # init: all other covariates
-  var_sel<-var_ps # init: start with all covariates
+  var_sel<-xo_vec # init: start with all covariates
   pval<-0 
   while(insig_n > 0 & length(var_sel) > 0 & pval <= pval_threshold){
     # build model
