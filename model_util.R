@@ -61,10 +61,6 @@ ipw.lasso<-function(
   verb = TRUE #verbose
 ){
   # require(tidyverse,magrittr,glmnet,islasso,scales)
-
-  # conversion to matrix
-  x<-data.matrix(data_df[,xo_vec])
-  
   # loop over yo_vec
   out<-list()
   for(yo_i in seq_along(c(yc,ycs,yo_vec))){
@@ -75,6 +71,13 @@ ipw.lasso<-function(
     out_yo<-list()
     # calculate weight with smoothing
     y<-unlist(data_df[,yo])
+    # form covariate matrix
+    if(yo==yc){
+      x<-data.matrix(data_df[,xo_vec])
+    }else{
+      # include yc on the pathway assuming yo_vec is mediated by yc
+      x<-data.matrix(data_df[,c(yc,xo_vec)])
+    }
     fit_tw<-cv.glmnet(x=x,y=y,family=family,type.measure = type.measure,alpha=1)
     tw<-predict(fit_tw, newx = x, s = "lambda.min", type="response")
     id<-unlist(data_df[,id_col])
