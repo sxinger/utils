@@ -193,13 +193,10 @@ fast_rfe.coxph<-function(
   fit_sel<-coxph(formula(paste0("Surv(",time_col,",",status_col,") ~ ",
                                  paste(unique(c(var_sel, yc)), collapse = "+"))),
                   data = data_df, weights = wt)
-  # quick inspection
-  plot_sel<-ggforest(fit_sel,data = data_df)
   # result list
   out<-list(
     var_sel = var_sel,
-    fit_sel = fit_sel,
-    plot_sel = plot_sel
+    fit_sel = fit_sel
   )
 
   return(out)
