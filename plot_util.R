@@ -17,144 +17,109 @@ convert_scale<-function(from,to){
   return(list(val=new_from,
               formula=revert_formula))
 }
-## example
-# ggplot(df %<>%
-#          mutate(new_col = convert_scale(enc_pat_ratio,enc)[["val"]],
-#                 axis_formula = convert_scale(enc_pat_ratio,enc)[["formula"]]),
-#        aes(x=site)) +
-#   geom_col(aes(y=enc), size = 1, color = "darkblue", fill = "white")+
-#   geom_line(aes(y=new_col), size = 1.5, color="red", group = 1)+
-#   scale_y_continuous(sec.axis = sec_axis(as.formula(df$axis_formula[1]), name = "sec_axis"))+
-#   theme(axis.text.x = element_text(angle = 45),text=element_text(face="bold")) +
-#   facet_wrap(~ enc_type,ncol=2,scales = "free")
 
-## alternative version of ggforest for stratified coxph model visual
-ggforest2 <- function (model, data = NULL, main = "Hazard ratio", 
-                       cpositions = c(0.02, 0.22, 0.4), fontsize = 0.7, 
-                       refLabel = "reference", noDigits = 2) {
-  conf.high <- conf.low <- estimate <- NULL
-  stopifnot(class(model) == "coxph")
-  data <- survminer:::.get_data(model, data = data)
-  # remove the additional "Strata" or "cluster" term
-  terms <- attr(model$terms, "dataClasses")
-  terms <- terms[names(terms) %in% colnames(data)]
-  coef <- as.data.frame(broom::tidy(model,conf.int=TRUE,conf.level=0.95))
-  gmodel <- broom::glance(model)
-  allTerms <- lapply(seq_along(terms), function(i) {
-    var <- names(terms)[i]
-    if(var %in% colnames(data)) {
-      if (terms[i] %in% c("factor", "character")) {
-        adf <- as.data.frame(table(data[, var]))
-        cbind(var = var, adf, pos = 1:nrow(adf))
-      }
-      else if (terms[i] == "numeric") {
-        data.frame(var = var, Var1 = "", Freq = nrow(data), 
-                   pos = 1)
-      }
-      else {
-        vars = grep(paste0("^", var, "*."), coef$term, 
-                    value = TRUE)
-        data.frame(var = vars, Var1 = "", Freq = nrow(data), 
-                   pos = seq_along(vars))
-      }
-    } else {
-      message(var, "is not found in data columns, and will be skipped.")
-    }    
-  })
-  allTermsDF <- do.call(rbind, allTerms)
-  colnames(allTermsDF) <- c("var", "level", "N", "pos")
-  inds <- apply(allTermsDF[, 1:2], 1, paste0, collapse = "")
-  rownames(coef) <- gsub(coef$term, pattern = "`", replacement = "")
-  toShow <- cbind(allTermsDF, coef[inds, ])[, c("var", "level", "N", "p.value", 
-                                                "estimate", "conf.low", "conf.high", "pos")]
-  toShowExp <- toShow[, 5:7]
-  toShowExp[is.na(toShowExp)] <- 0
-  toShowExp <- format(exp(toShowExp), digits = noDigits)
-  toShowExpClean <- data.frame(toShow, pvalue = signif(toShow[, 4], noDigits + 1), 
-                               toShowExp)
-  toShowExpClean$stars <- paste0(round(toShowExpClean$p.value, noDigits + 1), " ", 
-                                 ifelse(toShowExpClean$p.value < 0.05, "*", ""), 
-                                 ifelse(toShowExpClean$p.value < 0.01, "*", ""), 
-                                 ifelse(toShowExpClean$p.value < 0.001, "*", ""))
-  toShowExpClean$ci <- paste0("(", toShowExpClean[, "conf.low.1"], 
-                              " - ", toShowExpClean[, "conf.high.1"], ")")
-  toShowExpClean$estimate.1[is.na(toShowExpClean$estimate)] = refLabel
-  toShowExpClean$stars[which(toShowExpClean$p.value < 0.001)] = "<0.001 ***"
-  toShowExpClean$stars[is.na(toShowExpClean$estimate)] = ""
-  toShowExpClean$ci[is.na(toShowExpClean$estimate)] = ""
-  toShowExpClean$estimate[is.na(toShowExpClean$estimate)] = 0
-  toShowExpClean$var = as.character(toShowExpClean$var)
-  toShowExpClean$var[duplicated(toShowExpClean$var)] = ""
-  toShowExpClean$N <- paste0("(N=", toShowExpClean$N, ")")
-  toShowExpClean <- toShowExpClean[nrow(toShowExpClean):1, ]
-  rangeb <- range(toShowExpClean$conf.low, toShowExpClean$conf.high, 
-                  na.rm = TRUE)
-  breaks <- axisTicks(rangeb/2, log = TRUE, nint = 7)
-  rangeplot <- rangeb
-  rangeplot[1] <- rangeplot[1] - diff(rangeb)
-  rangeplot[2] <- rangeplot[2] + 0.15 * diff(rangeb)
-  width <- diff(rangeplot)
-  y_variable <- rangeplot[1] + cpositions[1] * width
-  y_nlevel <- rangeplot[1] + cpositions[2] * width
-  y_cistring <- rangeplot[1] + cpositions[3] * width
-  y_stars <- rangeb[2]
-  x_annotate <- seq_len(nrow(toShowExpClean))
-  annot_size_mm <- fontsize * 
-    as.numeric(grid::convertX(unit(theme_get()$text$size, "pt"), "mm"))
-  p <- ggplot(toShowExpClean, 
-              aes(seq_along(var), exp(estimate))) + 
-    geom_rect(aes(xmin = seq_along(var) - 0.5, 
-                  xmax = seq_along(var) + 0.5, 
-                  ymin = exp(rangeplot[1]), 
-                  ymax = exp(rangeplot[2]), 
-                  fill = ordered(seq_along(var)%%2 + 1))) +
-    scale_fill_manual(values = c("#FFFFFF33",  "#00000033"), guide = "none") + 
-    geom_point(pch = 15, size = 4) + 
-    geom_errorbar(aes(ymin = exp(conf.low), ymax = exp(conf.high)), 
-                  width = 0.15) + 
-    geom_hline(yintercept = 1, linetype = 3) + 
-    coord_flip(ylim = exp(rangeplot)) + 
-    ggtitle(main) + 
-    scale_y_log10(name = "", labels = sprintf("%g", breaks), 
-                  expand = c(0.02, 0.02), breaks = breaks) + 
-    theme_light() +
-    theme(panel.grid.minor.y = element_blank(), 
-          panel.grid.minor.x = element_blank(), 
-          panel.grid.major.y = element_blank(), 
-          legend.position = "none", 
-          panel.border = element_blank(), 
-          axis.title.y = element_blank(), 
-          axis.text.y = element_blank(), 
-          axis.ticks.y = element_blank(), 
-          plot.title = element_text(hjust = 0.5)) + 
-    xlab("") + 
-    annotate(geom = "text", x = x_annotate, y = exp(y_variable), 
-             label = toShowExpClean$var, fontface = "bold", 
-             hjust = 0, size = annot_size_mm) + 
-    annotate(geom = "text", x = x_annotate, y = exp(y_nlevel), hjust = 0, 
-             label = toShowExpClean$level, 
-             vjust = -0.1, size = annot_size_mm) + 
-    annotate(geom = "text", x = x_annotate, y = exp(y_nlevel), 
-             label = toShowExpClean$N, fontface = "italic", hjust = 0, 
-             vjust = ifelse(toShowExpClean$level == "", 0.5, 1.1),
-             size = annot_size_mm) + 
-    annotate(geom = "text", x = x_annotate, y = exp(y_cistring), 
-             label = toShowExpClean$estimate.1, size = annot_size_mm, 
-             vjust = ifelse(toShowExpClean$estimate.1 == "reference", 0.5, -0.1)) + 
-    annotate(geom = "text", x = x_annotate, y = exp(y_cistring), 
-             label = toShowExpClean$ci, size = annot_size_mm, 
-             vjust = 1.1, fontface = "italic") + 
-    annotate(geom = "text", x = x_annotate, y = exp(y_stars), 
-             label = toShowExpClean$stars, size = annot_size_mm, 
-             hjust = -0.2, fontface = "italic") +
-    annotate(geom = "text", x = 0.5, y = exp(y_variable), 
-             label = paste0("# Events: ", gmodel$nevent, 
-                            "; Global p-value (Log-Rank): ", 
-                            format.pval(gmodel$p.value.log, eps = ".001"), 
-                            " \nAIC: ", round(gmodel$AIC, 2), 
-                            "; Concordance Index: ", round(gmodel$concordance, 2)), 
-             size = annot_size_mm, hjust = 0, vjust = 1.2, fontface = "italic")
-  gt <- ggplot_gtable(ggplot_build(p))
-  gt$layout$clip[gt$layout$name == "panel"] <- "off"
-  ggpubr::as_ggplot(gt)
+plot_dualy<-function(
+  df,   # data.frame
+  x,    # x-axis
+  y,    # primary y-axis
+  y_sec # secondary y-axis
+){
+  # require(tidyverse)
+  # covert secondary y to the same scale of primary y
+  df_cp<-df %>%
+      mutate(new_col = convert_scale(y_sec,y)[["val"]],
+             axis_formula = convert_scale(y_sec,y)[["formula"]])
+
+  # ggplot object
+  plt<-ggplot(df_cp,aes(x=x)) +
+    geom_col(aes(y=y), size = 1, color = "darkblue", fill = "white")+
+    geom_line(aes(y=new_col), size = 1.5, color="red", group = 1)+
+    scale_y_continuous(sec.axis = sec_axis(as.formula(df_cp$axis_formula[1]), name = "sec_axis"))
+
+  # compatible with ggplot syntax
+  return(plt)
+}
+
+## forestplot
+forestplot.HR <- function (
+  df,
+  x_idx1="vari",
+  x_idx2="vari_cat",
+  y_idx="endpt",
+  est="est",
+  lower="lower",
+  upper="upper",
+  pval="pval",
+  tm = forest_theme(arrow_type = "closed",
+                    arrow_label_just = "end")
+){
+  # require(tidyverse,grid,forestploter)
+  # https://cran.r-project.org/web/packages/forestploter/vignettes/forestploter-intro.html
+
+  # change to internal names for easy reference
+  nm_map<-data.frame(
+    ext_nm=c(x_idx1,x_idx2,y_idx,est,lower,upper,pval)
+  ) %>%
+    mutate(int_nm=deparse(substitute(ext_nm)))
+  plt_df<-df %>%
+    select(all_of(nm_map$ext_nm)) %>%
+    rename_at(vars(nm_map$ext_nm), ~ nm_map$int_nm)
+  
+  # add empty columns
+  plt_df %<>%
+    mutate(
+      pvalstar = case_when(pval > 0.1 ~ "",
+                           pval <= 0.1 & pval > 0.05 ~ "*",
+                           pval <= 0.05 & pval > 0.01 ~ "**",
+                           pval <= 0.01 & pval > 0.001 ~ "***",
+                           TRUE ~ "****"),
+      Outcome = paste(rep(" ", 20), collapse = " "),
+      `HR (95% CI)` = sprintf("%.2f (%.2f to %.2f) %s",est, lower, upper, pvalstar)
+    )
+  
+  # pivot
+  y_grp<-unique(plt_df$y_idx)
+  n_grp<-length(y_grp)
+  plt_df %<>%
+    pivot_wider(
+      id_cols = c("x_idx1","x_idx2"),
+      names_from = "y_idx",
+      names_sep = ".",
+      values_from = c(Outcome,est,lower,upper,`HR (95% CI)`),
+    ) %>%
+    group_by(x_idx1,x_idx2) %>%
+    mutate(idx=order(x_idx2)) %>%
+    ungroup
+  
+  # add header rows
+  plt_df %<>%
+    bind_rows(data.frame(idx=0,x_idx1 = unique(plt_df$x_idx1))) %>%
+    mutate(x_idx2 = paste0("  ",x_idx1)) %>%
+    arrange(x_idx1,idx) 
+
+  # collect list for 
+  est_lst<-list()
+  lower_lst<-list()
+  upper_lst<-list()
+  for(y in seq_along(y_grp)){
+    est_lst<-list(est_lst,plt_df[,paste0(y,".est")])
+    lower_lst<-list(lower_lst,plt_df[,paste0(y,".lower")])
+    upper_lst<-list(upper_lst,plt_df[,paste0(y,".upper")])
+  }
+
+  # plot forest
+  p <- forest(plt_df[,c(1, 21, 23, 22, 24)],
+              est = est_lst,
+              lower = lower_lst,
+              upper = upper_lst,
+              ci_column = 2*seq_len(n_grp),
+              ref_line = rep(1, n_grp),
+              vert_line = rep(list(0.3, 1.4),n_grp),
+              arrow_lab = rep(list("L1", "R1"),n_grp),
+              xlim = rep(list(0, 3),n_grp),
+              ticks_at = rep(list(0.1, 0.5, 1, 2.5),n_grp),
+              xlab = rep("HR", n_grp),
+              nudge_y = 0.2,
+              theme = tm)
+    plot(p)
 }
