@@ -50,11 +50,25 @@ forestplot.HR <- function (
   lower="lower",
   upper="upper",
   pval="pval",
-  tm = forest_theme(arrow_type = "closed",
-                    arrow_label_just = "end")
+  plt_par = list(),
+  ny = 1,
+  tm = forest_theme(
+    arrow_type = "closed",
+    arrow_label_just = "end"
+  )
 ){
   # require(tidyverse,grid,forestploter)
   # https://cran.r-project.org/web/packages/forestploter/vignettes/forestploter-intro.html
+
+  plt_par$ci_column=Filter(Negate(is.null),list(plt_par$ci_column,2*seq_len(ny)))[[1]]
+  plt_par$ref_line = Filter(Negate(is.null),list(plt_par$ref_line,rep(1, ny)))[[1]]
+  plt_par$vert_line = Filter(Negate(is.null),list(plt_par$vert_line,rep(list(0.3, 1.4),ny)))[[1]]
+  plt_par$arrow_lab = Filter(Negate(is.null),list(plt_par$arrow_lab,rep(list("L1", "R1"),ny)))[[1]]
+  plt_par$xlim = Filter(Negate(is.null),list(plt_par$xlim,rep(list(0, 3),ny)))[[1]]
+  plt_par$x_trans = Filter(Negate(is.null),list(plt_par$x_trans,rep("none",ny)))[[1]]
+  plt_par$ticks_at = Filter(Negate(is.null),list(plt_par$ticks_at,rep(list(0.1, 0.5, 1, 2.5),ny)))[[1]]
+  plt_par$xlab = Filter(Negate(is.null),list(plt_par$xlab,rep("HR", ny)))[[1]]
+  plt_par$nudge_y = c(plt_par$nudge_y,0.2)[1]
 
   # change to internal names for easy reference
   nm_map<-data.frame(
@@ -65,7 +79,7 @@ forestplot.HR <- function (
     select(all_of(nm_map$ext_nm)) %>%
     rename_at(vars(nm_map$ext_nm), ~ nm_map$int_nm)
   
-  # add empty columns
+  # add an empty column for HR plots and a label column
   plt_df %<>%
     mutate(
       pvalstar = case_when(pval > 0.1 ~ "",
@@ -77,7 +91,7 @@ forestplot.HR <- function (
       `HR (95% CI)` = sprintf("%.2f (%.2f to %.2f) %s",est, lower, upper, pvalstar)
     )
   
-  # pivot
+  # pivot wide
   y_grp<-unique(plt_df$y_idx)
   n_grp<-length(y_grp)
   plt_df %<>%
@@ -97,7 +111,7 @@ forestplot.HR <- function (
     mutate(x_idx2 = paste0("  ",x_idx1)) %>%
     arrange(x_idx1,idx) 
 
-  # collect list for 
+  # collect list for HR segment plots
   est_lst<-list()
   lower_lst<-list()
   upper_lst<-list()
@@ -108,18 +122,19 @@ forestplot.HR <- function (
   }
 
   # plot forest
-  p <- forest(plt_df[,c(1, 21, 23, 22, 24)],
+  tidy_col<-c("x_idx2",list(a=c("Outcome","HR (95% CI)"),b=y_grp) |> cross() |> map_chr(\(...) paste0(..., collapse = ".")))
+  p <- forest(plt_df[,tidy_col],
               est = est_lst,
               lower = lower_lst,
               upper = upper_lst,
-              ci_column = 2*seq_len(n_grp),
-              ref_line = rep(1, n_grp),
-              vert_line = rep(list(0.3, 1.4),n_grp),
-              arrow_lab = rep(list("L1", "R1"),n_grp),
-              xlim = rep(list(0, 3),n_grp),
-              ticks_at = rep(list(0.1, 0.5, 1, 2.5),n_grp),
-              xlab = rep("HR", n_grp),
-              nudge_y = 0.2,
+              ci_column = plt_par$ci_column,
+              ref_line = plt_par$ref_line,
+              vert_line = plt_par$vert_line,
+              arrow_lab = plt_par$arrow_lab,
+              xlim = plt_par$xlim,
+              ticks_at = plt_par$ticks_at,
+              xlab = plt_par$xlab,
+              nudge_y = plt_par$nudge_y,
               theme = tm)
-    plot(p)
+    return(p)
 }
