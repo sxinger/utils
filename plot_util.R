@@ -21,8 +21,8 @@ convert_scale<-function(from,to){
 plot_dualy<-function(
   df,   # data.frame
   x,    # x-axis
-  y,    # primary y-axis
-  y_sec # secondary y-axis
+  y,    # primary y-axis - bar plot
+  y_sec # secondary y-axis - line plot
 ){
   # require(tidyverse)
   # covert secondary y to the same scale of primary y
