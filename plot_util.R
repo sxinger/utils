@@ -64,7 +64,7 @@ forestplot.HR <- function (
 plt_par$ci_column=Filter(Negate(is.null),list(plt_par$ci_column,2*seq_len(ny)))[[1]]
 plt_par$ref_line = Filter(Negate(is.null),list(plt_par$ref_line,rep(1, ny)))[[1]]
 plt_par$vert_line = Filter(Negate(is.null),list(plt_par$vert_line,rep(list(c(0.3, 1.4)),ny)))[[1]]
-plt_par$arrow_lab = Filter(Negate(is.null),list(plt_par$arrow_lab,rep(list(c("Worse", "Better")),ny)))[[1]]
+plt_par$arrow_lab = Filter(Negate(is.null),list(plt_par$arrow_lab,rep(list(c("Better", "Worse")),ny)))[[1]]
 plt_par$xlim = Filter(Negate(is.null),list(plt_par$xlim,rep(list(c(0, 1.5)),ny)))[[1]]
 plt_par$x_trans = Filter(Negate(is.null),list(plt_par$x_trans,rep("none",ny)))[[1]]
 plt_par$ticks_at = Filter(Negate(is.null),list(plt_par$ticks_at,rep(list(c(0.1, 0.5, 1, 1.5)),ny)))[[1]]
