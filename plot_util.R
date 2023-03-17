@@ -42,20 +42,20 @@ plot_dualy<-function(
 
 ## forestplot
 forestplot.HR <- function (
-  df,
-  x_idx1="vari",
-  x_idx2="vari_cat",
-  y_idx="endpt",
-  est="est",
-  lower="lower",
-  upper="upper",
-  pval="pval",
-  plt_par = list(),
-  ny = 1,
+  df,  # long table
+  x_idx1="vari", # 1st layer index
+  x_idx2="vari_cat", # 2nd layer index
+  y_idx="endpt", # 1st layer y index
+  est="est", # estimates
+  lower="lower", # 95% CI lower bound
+  upper="upper", # 95% CI upper bound
+  pval="pval", # p value
+  plt_par = list(), # other plotting parameters passed in forest function
+  ny = 1, # number of y groups
   tm = forest_theme(
     arrow_type = "closed",
     arrow_label_just = "end"
-  )
+  ) # theme parameters for forest function
 ){
   # require(tidyverse,grid,forestploter)
   # https://cran.r-project.org/web/packages/forestploter/vignettes/forestploter-intro.html
