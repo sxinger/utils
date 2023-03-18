@@ -1,7 +1,18 @@
 #########################################
 ## utility functions for data analysis ##
 #########################################
-# require(tidyverse,magrittr)
+
+# find turning point 
+get_turnpoints<-function(
+  x,y
+){
+  # require(tidyverse)
+  delta_y = diff(y)
+  turns_ind = which(delta_y[-1] * delta_y[-length(delta_y)] < 0) + 1
+  turn_df = data.frame(x=x[turns_ind],y=y[turns_ind])
+  return(turn_df)
+}
+
 
 # p-value calculators based on sample summaries
 pval_on_summ_2sampleprop<-function(
@@ -10,6 +21,7 @@ pval_on_summ_2sampleprop<-function(
   pooled=TRUE,
   alternative="both"
 ){
+  # require(tidyverse,magrittr)
   n1<-v1[1]
   p1<-v1[2]
   n2<-v2[1]
