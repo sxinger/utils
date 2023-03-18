@@ -116,6 +116,7 @@ forestplot.HR <- function (
     replace(is.na(.), " ")
 
   plt_df %<>%
+    mutate_at(tidy_col, ~replace_na(.," ")) %>%
     mutate(x_idx2 = paste0("  ",x_idx2)) %>%
     bind_rows(plt_header) %>%
     arrange(x_idx1,idx) %>% select(-idx)
