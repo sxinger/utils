@@ -164,10 +164,21 @@ load_valueset.ecqm<-function(vs_url = "",vs_name_str = ""){
   return(lookup_tbl)
 }
 
+load_valueset.vsac<-function(vs_url = ""){
+  # load valueset in json
+  vs_file_type<-gsub(".*\\.","=",vs_url)
+  vs_file<-jsonlite::fromJSON(vs_url) %>%
+    unnest(vs)
+
+  # return data.frame
+  return(lookup_tbl)
+}
+
 load_valueset<-function(vs_template = c("curated",
                                         "ecqm",
                                         "ncbo",
-                                        "rxnav"),
+                                        "rxnav",
+                                        "vsac"),
                         vs_url = "",
                         vs_name_str = "",
                         dry_run = TRUE,
