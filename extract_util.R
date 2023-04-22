@@ -211,17 +211,17 @@ load_valueset<-function(
       stop("connection needs to be specified!")
     }else{
       # specify field.types to accommodate long strings
-      max_str<-rep("varchar(max)",ncol(lookup_tbl))
+      max_str<-rep("varchar(500)",ncol(lookup_tbl))
       names(max_str) <- names(lookup_tbl)
       # write valueset table to target db
       DBI::dbWriteTable(
         conn,
         SQL(paste0(write_to_schema,".",write_to_tbl)),
         lookup_tbl,
-        overwrite=overwrite,
-        append=!overwrite,
-        file_encoding=file_encoding,
-        field.types=max_str
+        overwrite = overwrite,
+        append = !overwrite,
+        file_encoding = file_encoding,
+        field.types = max_str
       )
     }
   }
