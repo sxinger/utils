@@ -178,7 +178,7 @@ load_valueset.vsac<-function(vs_url = "",vs_name_str = ""){
       "CODE_LABEL" = "@displayName",
       "CODE_TYPE" = "@codeSystemName"
     ) %>%
-    mutate(CODE_TYPE_CDM = lapply(CODE_TYPE, function(x) cdm_code_type_map(x))) %>%
+    mutate(CODE_TYPE_CDM = unlist(lapply(CODE_TYPE, function(x) cdm_code_type_map(x)))) %>%
     select(CODE_TYPE,CODE_TYPE_CDM,CODE,CODE_LABEL,CODEGRP,CODEGRP_LABEL) 
 
   # return data.frame
