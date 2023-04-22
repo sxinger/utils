@@ -185,18 +185,21 @@ load_valueset.vsac<-function(vs_url = "",vs_name_str = ""){
   return(lookup_tbl)
 }
 
-load_valueset<-function(vs_template = c("curated",
-                                        "ecqm",
-                                        "ncbo",
-                                        "rxnav",
-                                        "vsac"),
-                        vs_url = "",
-                        vs_name_str = "",
-                        dry_run = TRUE,
-                        conn=NULL,
-                        write_to_schema = "PUBLIC",
-                        write_to_tbl = "TEMP",
-                        overwrite=TRUE){
+load_valueset<-function(
+  vs_template = c("curated",
+                  "ecqm",
+                  "ncbo",
+                  "rxnav",
+                  "vsac"),
+  vs_url = "",
+  vs_name_str = "",
+  dry_run = TRUE,
+  conn=NULL,
+  write_to_schema = "PUBLIC",
+  write_to_tbl = "TEMP",
+  overwrite=TRUE,
+  file_encoding ="latin-1"
+){
   vs_load_func<-get(paste0("load_valueset.",vs_template))
   lookup_tbl<-vs_load_func(vs_url=vs_url,vs_name_str=vs_name_str)
   
@@ -207,12 +210,19 @@ load_valueset<-function(vs_template = c("curated",
     if(is.null(conn)){
       stop("connection needs to be specified!")
     }else{
+      # specify field.types to accommodate long strings
+      max_str<-rep("varchar(max)",ncol(lookup_tbl))
+      names(max_str) <- names(lookup_tbl)
       # write valueset table to target db
-      DBI::dbWriteTable(conn,
-                        SQL(paste0(write_to_schema,".",write_to_tbl)),
-                        lookup_tbl,
-                        overwrite=overwrite,
-                        append=!overwrite)
+      DBI::dbWriteTable(
+        conn,
+        SQL(paste0(write_to_schema,".",write_to_tbl)),
+        lookup_tbl,
+        overwrite=overwrite,
+        append=!overwrite,
+        file_encoding=file_encoding,
+        field.types=max_str
+      )
     }
   }
 }
