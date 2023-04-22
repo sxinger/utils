@@ -30,12 +30,14 @@ load_valueset.ncbo<-function(vs_url = "",vs_name_str = ""){
   vs_file<-jsonlite::fromJSON(vs_url)
   
   # initialize lookup table
-  lookup_tbl<-data.frame(CODE_TYPE=as.character(),
-                         CODE_TYPE_CDM=as.character(),
-                         CODE_SUBTYPE=as.character(),
-                         CODE=as.character(),
-                         CODE_GRP=as.character(),
-                         stringsAsFactors=F)
+  lookup_tbl<-data.frame(
+    CODE_TYPE=as.character(),
+    CODE_TYPE_CDM=as.character(),
+    CODE_SUBTYPE=as.character(),
+    CODE=as.character(),
+    CODE_GRP=as.character(),
+    stringsAsFactors=F
+    )
   
   # main code body for parsing json file
   vs_name_list<-names(vs_file)
@@ -168,7 +170,16 @@ load_valueset.vsac<-function(vs_url = "",vs_name_str = ""){
   # load valueset in json
   vs_file_type<-gsub(".*\\.","=",vs_url)
   vs_file<-jsonlite::fromJSON(vs_url) %>%
-    unnest(vs)
+    unnest(vs) %>%
+    rename(
+      "CODEGRP" = "oid" ,
+      "CODEGRP_LABEL" = "displayName",
+      "CODE" = "@code",
+      "CODE_LABEL" = "@displayName",
+      "CODE_TYPE" = "@codeSystemName"
+    ) %>%
+    mutate(CODE_TYPE_CDM = lapply(CODE_TYPE, function(x) cdm_code_type_map(x))) %>%
+    select(CODE_TYPE,CODE_TYPE_CDM,CODE,CODE_LABEL,CODEGRP,CODEGRP_LABEL) 
 
   # return data.frame
   return(lookup_tbl)
