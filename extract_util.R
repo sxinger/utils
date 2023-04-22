@@ -169,7 +169,7 @@ load_valueset.ecqm<-function(vs_url = "",vs_name_str = ""){
 load_valueset.vsac<-function(vs_url = "",vs_name_str = ""){
   # load valueset in json
   vs_file_type<-gsub(".*\\.","=",vs_url)
-  vs_file<-jsonlite::fromJSON(vs_url) %>%
+  lookup_tbl<-jsonlite::fromJSON(vs_url) %>%
     unnest(vs) %>%
     rename(
       "CODEGRP" = "oid" ,
