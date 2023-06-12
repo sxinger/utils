@@ -98,7 +98,7 @@ forestplot.HR <- function (
     pivot_wider(
       id_cols = c("x_idx1","x_idx2"),
       names_from = "y_idx",
-      values_from = c(` `,est,lower,upper,`HR (95% CI)`),
+      values_from = c(Outcome,est,lower,upper,`HR (95% CI)`),
       names_glue = "{y_idx}.{.value}"
     ) %>%
     group_by(x_idx1,x_idx2) %>%
@@ -106,7 +106,7 @@ forestplot.HR <- function (
     ungroup
 
   # add header rows
-  tidy_col<-c("x_idx2",tidyr::expand_grid(!!!list(b=y_grp,a=c(". ",".HR (95% CI)"))) |> pmap_chr(paste0))
+  tidy_col<-c("x_idx2",tidyr::expand_grid(!!!list(b=y_grp,a=c(".",".HR (95% CI)"))) |> pmap_chr(paste0))
   plt_header<-plt_df[FALSE,tidy_col] %>%
     bind_rows(data.frame(
       x_idx1 = unique(plt_df$x_idx1),
