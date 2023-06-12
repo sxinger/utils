@@ -213,6 +213,9 @@ load_valueset<-function(
       # specify field.types to accommodate long strings
       max_str<-rep("varchar(500)",ncol(lookup_tbl))
       names(max_str) <- names(lookup_tbl)
+      if(!overwrite){
+        max_str = NULL
+      }
       # write valueset table to target db
       DBI::dbWriteTable(
         conn,
