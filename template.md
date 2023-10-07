@@ -65,17 +65,16 @@ if (DRY_RUN) {
 ... main body ... 
 
 if (DRY_RUN) {
-        // preview of the generated dynamic SQL scripts - comment it out when perform actual execution
-        var log_stmt = snowflake.createStatement({
-                        sqlText: `INSERT INTO `+ DRY_RUN_AT +` (qry) values (:1), (:2);`,
-                        binds: [sqlstmt1,sqlstmt2]});
-        log_stmt.execute(); 
-    } else {
-        // run dynamic dml query
-        var run_sqlstmt1 = snowflake.createStatement({sqlText: sqlstmt1}); run_sqlstmt1.execute();
-        var run_sqlstmt2 = snowflake.createStatement({sqlText: sqlstmt2}); run_sqlstmt2.execute();
-        var commit_txn = snowflake.createStatement({sqlText: `commit;`}); commit_txn.execute();
-    }
-
+    // preview of the generated dynamic SQL scripts - comment it out when perform actual execution
+    var log_stmt = snowflake.createStatement({
+                    sqlText: `INSERT INTO `+ DRY_RUN_AT +` (qry) values (:1), (:2);`,
+                    binds: [sqlstmt1,sqlstmt2]});
+    log_stmt.execute(); 
+} else {
+    // run dynamic dml query
+    var run_sqlstmt1 = snowflake.createStatement({sqlText: sqlstmt1}); run_sqlstmt1.execute();
+    var run_sqlstmt2 = snowflake.createStatement({sqlText: sqlstmt2}); run_sqlstmt2.execute();
+    var commit_txn = snowflake.createStatement({sqlText: `commit;`}); commit_txn.execute();
+}
 $$
 ;
