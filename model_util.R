@@ -203,7 +203,8 @@ fast_rfe.coxph<-function(
 }
 
 bayeopt_xgb<-function(
-  df_long,
+  train,
+  test,
   params_bd=list(
     max_depth = c(4L, 10L),
     min_child_weight = c(2L,10L),
