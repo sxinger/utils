@@ -203,8 +203,10 @@ fast_rfe.coxph<-function(
 }
 
 bayeopt_xgb<-function(
-  train,
-  test,
+  trainX,
+  trainY,
+  testX,
+  testY,
   params_bd=list(
     max_depth = c(4L, 10L),
     min_child_weight = c(2L,10L),
@@ -215,7 +217,8 @@ bayeopt_xgb<-function(
   N_CL=1,
   verb=T
 ){
-  {
+  # require(xgboost,ParBayesianOptimization)
+
   bm<-c()
   bm_nm<-c()
   start_tsk_i<-Sys.time()
@@ -229,15 +232,10 @@ bayeopt_xgb<-function(
       library(xgboost)
     })
   }
-
-  y_df<-df[,which(colnames(df) %in% c("id","y"))]
-  X_df<-df[,which(!colnames(df) %in% c("id","y","fold"))]
   
   #--covert to xgb data frame
-  dtrain<-xgb.DMatrix(data=X_df[,],
-                      label=y_df$y)
-  dtest<-xgb.DMatrix(data=X_df,
-                     label=y_df$y)
+  dtrain<-xgb.DMatrix(data=trainX,label=trainY)
+  dtest<-xgb.DMatrix(data=testX,label=testY)
   
   #-----------------------------------------------benchmark-----------------------------------------#
   lapse_i<-Sys.time()-start_tsk_i
@@ -254,27 +252,29 @@ bayeopt_xgb<-function(
     max_depth=10L, min_child_weight=1L, subsample=0.7,
     eta=0.05,colsample_bytree=0.8,lambda=1,alpha=0,gamma=1
   ) {  
-    dtrain<-xgb.DMatrix(data=X_tr_sp,label=y_tr_sp$y)
-    cv <- xgb.cv(params = list(booster = "gbtree",
-                               max_depth = max_depth,
-                               min_child_weight = min_child_weight,
-                               subsample = subsample, 
-                               eta = eta,
-                               colsample_bytree = colsample_bytree,
-                               lambda = lambda,
-                               alpha = alpha,
-                               gamma = gamma,
-                               objective = "binary:logistic",
-                               eval_metric = "auc"),
-                 data = dtrain,
-                 nround = 100,
-                 folds = folds,
-                 prediction = FALSE,
-                 # showsd = TRUE,
-                 early_stopping_rounds = 5,
-                 maximize = TRUE,
-                 verbose = 0)
-    
+    cv <- xgb.cv(
+      params = list(
+        booster = "gbtree",
+        max_depth = max_depth,
+        min_child_weight = min_child_weight,
+        subsample = subsample, 
+        eta = eta,
+        colsample_bytree = colsample_bytree,
+        lambda = lambda,
+        alpha = alpha,
+        gamma = gamma,
+        objective = "binary:logistic",
+        eval_metric = "auc"
+      ),
+        data = dtrain,
+        nround = 100,
+        folds = 5,
+        prediction = FALSE,
+        # showsd = TRUE,
+        early_stopping_rounds = 5,
+        maximize = TRUE,
+        verbose = 0
+    )
     return(list(Score = cv$evaluation_log$test_auc_mean[cv$best_iteration]))
   }
   
@@ -377,7 +377,6 @@ bayeopt_xgb<-function(
   #benchmark
   bm<-data.frame(bm_nm=bm_nm,bm_time=bm,
                  stringsAsFactors = F)
-}
 
 }
 
