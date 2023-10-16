@@ -333,17 +333,23 @@ get_dsurv_temporal<-function(dat,censor,tw,pred_in_d=1,carry_over=T){
 
 
 ## convert long mastrix to wide sparse matrix
-long_to_sparse_matrix<-function(df,id,var,val,binary=FALSE){
+long_to_sparse_matrix<-function(
+  df,
+  id,
+  variable,
+  value,
+  binary=FALSE
+){
   # require(Matrix)
   if(binary){
     x_sparse<-with(
       df,
       sparseMatrix(
         i=as.numeric(as.factor(get(id))),
-        j=as.numeric(as.factor(get(var))),
+        j=as.numeric(as.factor(get(variable))),
         x=1,
         dimnames=list(levels(as.factor(get(id))),
-                      levels(as.factor(get(var))))
+                      levels(as.factor(get(variable))))
       )
     )
   }else{
@@ -351,10 +357,10 @@ long_to_sparse_matrix<-function(df,id,var,val,binary=FALSE){
       df,
       sparseMatrix(
         i=as.numeric(as.factor(get(id))),
-        j=as.numeric(as.factor(get(var))),
-        x=as.numeric(get(val)),
+        j=as.numeric(as.factor(get(variable))),
+        x=as.numeric(get(value)),
         dimnames=list(levels(as.factor(get(id))),
-                      levels(as.factor(get(var))))
+                      levels(as.factor(get(variable))))
       )
     )
   }
