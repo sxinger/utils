@@ -202,6 +202,88 @@ fast_rfe.coxph<-function(
   return(out)
 }
 
+bayeopt_xgb<-function(
+  dtrain,
+  dtest,
+  folds=5,
+  params_bd=list(
+    max_depth = c(4L, 10L),
+    min_child_weight = c(2L,10L),
+    subsample = c(0.5,0.8),
+    colsample_bytree=c(0.3,0.8),
+    eta=c(0.05,0.1)
+  ),
+  N_CL=1,
+  verb=T
+){
+  # require(xgboost,ParBayesianOptimization)
+  
+  #--parallelization
+  if(N_CL > 1){
+    cl <- makeCluster(N_CL)
+    registerDoParallel(cl)
+    clusterExport(cl,'df') # copying data to clusters (note:xgb.DMatrix is not compatible with parallelization)
+    clusterEvalQ(cl,expr= {                          
+      library(xgboost) # copying model to clusters
+    })
+  }
+  
+  #--tune hyperparameter (less rounds, early stopping)
+  xgb_cv_bayes <- function(
+    max_depth=10L, min_child_weight=1L, subsample=0.7,
+    eta=0.05,colsample_bytree=0.8,lambda=1,alpha=0,gamma=1
+  ) {  
+    cv <- xgb.cv(
+      params = list(
+        booster = "gbtree",
+        max_depth = max_depth,
+        min_child_weight = min_child_weight,
+        subsample = subsample, 
+        eta = eta,
+        colsample_bytree = colsample_bytree,
+        lambda = lambda,
+        alpha = alpha,
+        gamma = gamma,
+        objective = "binary:logistic",
+        eval_metric = "auc"
+      ),
+        data = dtrain,
+        nround = 100,
+        folds = folds,
+        prediction = FALSE,
+        # showsd = TRUE,
+        early_stopping_rounds = 5,
+        maximize = TRUE,
+        verbose = 0
+    )
+    return(list(Score = cv$evaluation_log$test_auc_mean[cv$best_iteration]))
+  }
+  
+  OPT_Res <- bayesOpt(
+    FUN = xgb_cv_bayes,
+    bounds = bounds,
+    initPoints = 5,
+    iters.n = 50,
+    iters.k = N_CL,
+    parallel = TRUE,
+    acq = "ucb",
+    kappa = 2.576,
+    eps = 0.0,
+    otherHalting = list(timeLimit = 18000) #--limit maximal running time for better efficiency-- <5hr
+  )
+  
+  Best_Par<-getBestPars(OPT_Res)
+  
+  #--stop cluster
+  if(N_CL > 1){
+    stopCluster(cl)
+    registerDoSEQ()
+  }
+
+  # returen best parameters
+  return(Best_Par)
+}
+
 prune_xgb<-function(
   dtrain,
   dtest,
@@ -292,107 +374,87 @@ prune_xgb<-function(
   return(result)
 }
 
-
-
-bayeopt_xgb<-function(
-  dtrain,
-  dtest,
-  folds=5,
-  params_bd=list(
-    max_depth = c(4L, 10L),
-    min_child_weight = c(2L,10L),
-    subsample = c(0.5,0.8),
-    colsample_bytree=c(0.3,0.8),
-    eta=c(0.05,0.1)
-  ),
-  N_CL=1,
-  verb=T
+explain_model<-function(
+  X,y,
+  xgb_rslt, # model, pred_df, feat_imp
+  top_k = 20,
+  boots = 10,
+  nns = 30,
+  shap_cond = NULL # time index
 ){
-  # require(xgboost,ParBayesianOptimization)
-
-  bm<-c()
-  bm_nm<-c()
-  start_tsk_i<-Sys.time()
   
-  #--parallelization
-  if(N_CL > 1){
-    cl <- makeCluster(N_CL)
-    registerDoParallel(cl)
-    clusterExport(cl,'df') # copying data to clusters (note:xgb.DMatrix is not compatible with parallelization)
-    clusterEvalQ(cl,expr= {                          
-      library(xgboost) # copying model to clusters
-    })
-  }
- 
-  #-----------------------------------------------benchmark-----------------------------------------#
-  lapse_i<-Sys.time()-start_tsk_i
-  bm<-c(bm,paste0(round(lapse_i,1),units(lapse_i)))
-  bm_nm<-c(bm_nm,"transform data")
-  if(verb){
-    cat(paste0(c(pred_in_d,pred_task,fs_type),collapse = ","),
-        "...finish formatting training and testing sets.\n")
-  }
-  #-----------------------------------------------benchmark------------------------------------------#
+  #identify top k features
+  var_imp<-xgb_rslt$feat_imp %>% 
+    dplyr::slice(seq_len(top_k)) %>%
+    select(Feature, Gain)
+  var_nm<-var_imp$Feature
+  if(!is.null(shap_cond){
+    var_nm<-unique(c(shap_cond,var_imp$Feature))
+  })
   
-  #--tune hyperparameter (less rounds, early stopping)
-  xgb_cv_bayes <- function(
-    max_depth=10L, min_child_weight=1L, subsample=0.7,
-    eta=0.05,colsample_bytree=0.8,lambda=1,alpha=0,gamma=1
-  ) {  
-    cv <- xgb.cv(
-      params = list(
-        booster = "gbtree",
-        max_depth = max_depth,
-        min_child_weight = min_child_weight,
-        subsample = subsample, 
-        eta = eta,
-        colsample_bytree = colsample_bytree,
-        lambda = lambda,
-        alpha = alpha,
-        gamma = gamma,
-        objective = "binary:logistic",
-        eval_metric = "auc"
-      ),
-        data = dtrain,
-        nround = 100,
-        folds = folds,
-        prediction = FALSE,
-        # showsd = TRUE,
-        early_stopping_rounds = 5,
-        maximize = TRUE,
-        verbose = 0
+  #bootstrap CI for SHAP values 
+  pred_brkdn_b<-c()
+  x_val_b<-c()
+  
+  for(b in 1:boots){
+    # stratified sampling
+    n_idx<-which(y==0)
+    p_idx<-which(y==1)
+    nn<-length(n_idx)
+    idxset<-c(p_idx,n_idx[sample(1:nn,nns,replace=F)])
+    
+    # get shap contribution
+    contr <- predict(
+      xgb_rslt$model,
+      newdata=X[idxset,],
+      predcontrib = TRUE
     )
-    return(list(Score = cv$evaluation_log$test_auc_mean[cv$best_iteration]))
+    shap_sel<-contr[,which(colnames(contr) %in% var_nm)]
+    
+    # stack bootstrapping results
+    pred_brkdn_b %<>%
+      bind_rows(cbind(as.data.frame(shap_sel),
+                      boot=b,idx=idxset))
+    
+    x_val_b %<>%
+      bind_rows(cbind(as.data.frame(as.matrix(X[idxset,which(colnames(X) %in% var_nm)])),
+                      boot=b,idx=idxset))
   }
   
-  OPT_Res <- bayesOpt(
-    FUN = xgb_cv_bayes,
-    bounds = bounds,
-    initPoints = 5,
-    iters.n = 50,
-    iters.k = N_CL,
-    parallel = TRUE,
-    acq = "ucb",
-    kappa = 2.576,
-    eps = 0.0,
-    otherHalting = list(timeLimit = 18000) #--limit maximal running time for better efficiency-- <5hr
-  )
-  
-  Best_Par<-getBestPars(OPT_Res)
-  
-  #--stop cluster
-  if(N_CL > 1){
-    stopCluster(cl)
-    registerDoSEQ()
+  pred_brkdn<-c()
+  var_lst<-colnames(shap_sel)
+  for(v in seq_along(var_lst)){
+    pred_brkdn %<>%
+      bind_rows(
+        pred_brkdn_b %>%
+          dplyr::select(all_of(c(var_lst[v],"boot","idx"))) 
+    
+    if(!is.null(shap_cond)){
+      pred_brkdn %<>%
+        dplyr::mutate(
+          val=round(x_val_b[,var_lst[v]],2),
+          cond=x_val_b[,shap_cond]
+        ) %>%
+        group_by(boot,val,cond)
+    }else{
+      pred_brkdn %<>%
+        dplyr::mutate(
+          val=round(x_val_b[,var_lst[v]],2)
+        ) %>%
+        group_by(boot,val)
+    }
+    
+    pred_brkdn %<>%
+          dplyr::summarise(
+            effect=mean(get(var_lst[v])),
+            .groups = "drop") %>%
+          dplyr::mutate(var=var_lst[v])
+      )
   }
- 
-  #benchmark
-  bm<-data.frame(bm_nm=bm_nm,bm_time=bm,
-                 stringsAsFactors = F)
 
+  # result set
+  return(pred_brkdn)
 }
-
-
 
 # bayesopt_rf<-function(
 
@@ -476,73 +538,6 @@ bayeopt_xgb<-function(
 
 # generate_boruta_copy<-function(){
 #  
-# }
-
-
-# explain_model<-function(
-# 
-# ){
-#   #load trained model
-#   gbm_model<-gbm_ctnr$model
-  
-#   #identify top k features
-#   var_imp<-xgb.importance(model=gbm_model) %>% dplyr::slice(k_seq) %>%
-#     select(Feature, Gain)
-  
-#   #bootstrap CI for SHAP values
-#   boots<-100
-#   nns<-10000
-  
-#   pred_brkdn_b<-c()
-#   x_val_b<-c()
-  
-#   for(b in 1:boots){
-#     start_b<-Sys.time()
-    
-#     #stratified sampling
-#     n_idx<-which(y_ts_sp$y==0)
-#     p_idx<-which(y_ts_sp$y==1)
-#     nn<-length(n_idx)
-#     idxset<-c(p_idx,n_idx[sample(1:nn,nns,replace=F)])
-    
-#     contr <- predict(gbm_model,
-#                       newdata=X_ts_sp[idxset,],
-#                       predcontrib = TRUE)
-    
-#     shap_sel<-contr[,which(colnames(contr) %in% var_nm)]
-    
-#     #careful!! rows get re-ordered by xgb.plot.shap
-#     # shap<-xgb.plot.shap(data=X_ts_sp[idxset,],
-#     #                     shap_contrib=contr,
-#     #                     model = gbm_model,
-#     #                     top_n = 10,
-#     #                     plot=F)
-    
-#     pred_brkdn_b %<>%
-#       bind_rows(cbind(as.data.frame(shap_sel),
-#                       boot=b,idx=idxset))
-    
-#     x_val_b %<>%
-#       bind_rows(cbind(as.data.frame(as.matrix(X_ts_sp[idxset,which(colnames(X_ts_sp) %in% var_nm)])),
-#                       boot=b,idx=idxset))
-    
-#     lapse<-Sys.time()-start_b
-#     cat(paste0(c(params$site,pred_in_d,pred_task,fs_type),collapse = ","),
-#         "...finish bootstrapped sample",b,"in",lapse,units(lapse),".\n")
-#   }
-  
-#   pred_brkdn<-c()
-#   var_lst<-colnames(shap_sel)
-#   for(v in seq_along(var_lst)){
-#     pred_brkdn %<>%
-#       bind_rows(pred_brkdn_b %>%
-#                   dplyr::select(var_lst[v],"boot","idx") %>%
-#                   dplyr::mutate(val=round(x_val_b[,var_lst[v]],2)) %>%
-#                   group_by(boot,val) %>%
-#                   dplyr::summarise(effect=mean(get(var_lst[v]))) %>%
-#                   ungroup %>%
-#                   dplyr::mutate(var=var_lst[v]))
-#   }
 # }
 
 # #TODO
