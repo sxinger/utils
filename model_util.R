@@ -233,7 +233,7 @@ prune_xgb<-function(
   bst <- xgb.cv(
     params = list(
       booster = params$booster,
-      max_depth = params$max_depth
+      max_depth = params$max_depth,
       min_child_weight = params$min_child_weight,
       colsample_bytree = params$colsample_bytree,
       subsample = params$subsample,
@@ -245,7 +245,7 @@ prune_xgb<-function(
       eval_metric = params$eval_metric
 ),
     data = dtrain,
-    nround = nrounds,
+    nround = nround,
     folds = folds,
     # nfold = nfold,
     prediction = prediction,
@@ -258,17 +258,6 @@ prune_xgb<-function(
   # get optimal steps
   steps<-which(bst$evaluation_log$test_auc_mean==max(bst$evaluation_log$test_auc_mean))
   
-  #----------- benchmarking -------------------
-  lapse_i<-Sys.time()-start_tsk_i
-  bm<-c(bm,paste0(round(lapse_i,1),units(lapse_i)))
-  bm_nm<-c(bm_nm,"tune model")
-  if(verbose==1){
-    cat(paste0(c(pred_in_d,pred_task,fs_type),collapse = ","),
-      "...finish model tunning.\n")
-  }
-  start_tsk_i<-Sys.time() 
-  #----------- benchmarking -------------------
-
   #--prune the optimal model
   xgb_tune<-xgb.train(
     data=dtrain,
@@ -286,7 +275,7 @@ prune_xgb<-function(
   
   #--collect testing results
   valid<-data.frame(
-    actual = ,
+    actual = getinfo(dtest,"label"),
     pred = predict(xgb_tune,dtest),
     stringsAsFactors = F
   )
@@ -294,35 +283,16 @@ prune_xgb<-function(
   #--feature importance
   feat_imp<-xgb.importance(model=xgb_tune)
   
-  #----------- benchmarking -------------------  
-  lapse_i<-Sys.time()-start_tsk_i
-  bm<-c(bm,paste0(round(lapse_i,1),units(lapse_i)))
-  bm_nm<-c(bm_nm,"validate model")
-  if(verbose==1){
-    cat(paste0(c(pred_in_d,pred_task,fs_type),collapse = ","),
-        "...finish model validating.\n")
-   }
-  #----------- benchmarking -------------------
-
-  #-----------save model and other results--------
+  #--save model and other results
   result<-list(
     model = xgb_tune,
     pred_df = valid,
     feat_imp = feat_imp
   )
-    
-  #----------- benchmarking -------------------
-  lapse_tsk<-Sys.time()-start_tsk
-  bm<-c(bm,paste0(round(lapse_tsk,1),units(lapse_tsk)))
-  bm_nm<-c(bm_nm,"complete task")
-  if(verbose==1){  
-    cat("\nFinish building reference models for task:",pred_task,"in",pred_in_d,"with",fs_type,",in",lapse_tsk,units(lapse_tsk),
-     ".\n--------------------------\n")
-  }
-  #----------- benchmarking -------------------
-
   return(result)
 }
+
+
 
 bayeopt_xgb<-function(
   dtrain,
@@ -421,6 +391,8 @@ bayeopt_xgb<-function(
                  stringsAsFactors = F)
 
 }
+
+
 
 # bayesopt_rf<-function(
 
