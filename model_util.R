@@ -388,9 +388,9 @@ explain_model<-function(
     dplyr::slice(seq_len(top_k)) %>%
     select(Feature, Gain)
   var_nm<-var_imp$Feature
-  if(!is.null(shap_cond){
+  if(!is.null(shap_cond)){
     var_nm<-unique(c(shap_cond,var_imp$Feature))
-  })
+  }
   
   #bootstrap CI for SHAP values 
   pred_brkdn_b<-c()
@@ -424,32 +424,31 @@ explain_model<-function(
   pred_brkdn<-c()
   var_lst<-colnames(shap_sel)
   for(v in seq_along(var_lst)){
-    pred_brkdn %<>%
-      bind_rows(
-        pred_brkdn_b %>%
-          dplyr::select(all_of(c(var_lst[v],"boot","idx"))) 
-    
+    pred_brkdn_v<-pred_brkdn_b %>%
+      dplyr::select(all_of(c(var_lst[v],"boot","idx"))) 
+  
     if(!is.null(shap_cond)){
-      pred_brkdn %<>%
+      pred_brkdn_v %<>%
         dplyr::mutate(
           val=round(x_val_b[,var_lst[v]],2),
           cond=x_val_b[,shap_cond]
         ) %>%
         group_by(boot,val,cond)
     }else{
-      pred_brkdn %<>%
+      pred_brkdn_v %<>%
         dplyr::mutate(
           val=round(x_val_b[,var_lst[v]],2)
         ) %>%
         group_by(boot,val)
     }
     
-    pred_brkdn %<>%
-          dplyr::summarise(
-            effect=mean(get(var_lst[v])),
-            .groups = "drop") %>%
-          dplyr::mutate(var=var_lst[v])
-      )
+    pred_brkdn_v %<>%
+      dplyr::summarise(
+        effect=mean(get(var_lst[v])),
+        .groups = "drop") %>%
+      dplyr::mutate(var=var_lst[v])
+      
+    pred_brkdn %<>% bind_rows(pred_brkdn_v)
   }
 
   # result set
