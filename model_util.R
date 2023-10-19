@@ -381,7 +381,8 @@ explain_model<-function(
   var_lst = c(),
   boots = 10,
   nns = 30,
-  shap_cond = NULL # time index
+  shap_cond = NULL, # time index
+  verb = TRUE
 ){
   
   #identify top k features
@@ -457,6 +458,11 @@ explain_model<-function(
       mutate(var=var_lst[v])
       
     pred_brkdn %<>% bind_rows(pred_brkdn_v)
+
+    # report progress
+    if(verb){
+      cat("shap value generated for: ",var_lst[v])
+    }
   }
 
   # result set
