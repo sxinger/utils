@@ -378,6 +378,7 @@ explain_model<-function(
   X,y,
   xgb_rslt, # model, pred_df, feat_imp
   top_k = 20,
+  var_lst = c(),
   boots = 10,
   nns = 30,
   shap_cond = NULL # time index
@@ -385,13 +386,20 @@ explain_model<-function(
   
   #identify top k features
   var_imp<-xgb_rslt$feat_imp %>% 
-    dplyr::slice(seq_len(top_k)) %>%
+    slice(seq_len(top_k)) %>%
     select(Feature, Gain)
   var_nm<-var_imp$Feature
+
+  #add conditional index feature
   if(!is.null(shap_cond)){
-    var_nm<-unique(c(shap_cond,var_imp$Feature))
+    var_nm<-unique(c(shap_cond,var_nm))
   }
   
+  #add custom feature set
+  if(!is.null(var_lst)){
+    var_nm<-unique(c(var_lst,var_nm))
+  }
+
   #bootstrap CI for SHAP values 
   pred_brkdn_b<-c()
   x_val_b<-c()
@@ -425,34 +433,47 @@ explain_model<-function(
   var_lst<-colnames(shap_sel)
   for(v in seq_along(var_lst)){
     pred_brkdn_v<-pred_brkdn_b %>%
-      dplyr::select(all_of(c(var_lst[v],"boot","idx"))) 
+      select(all_of(c(var_lst[v],"boot","idx"))) 
   
     if(!is.null(shap_cond)){
       pred_brkdn_v %<>%
-        dplyr::mutate(
+        mutate(
           val=round(x_val_b[,var_lst[v]],2),
           cond=x_val_b[,shap_cond]
         ) %>%
         group_by(boot,val,cond)
     }else{
       pred_brkdn_v %<>%
-        dplyr::mutate(
+        mutate(
           val=round(x_val_b[,var_lst[v]],2)
         ) %>%
         group_by(boot,val)
     }
     
     pred_brkdn_v %<>%
-      dplyr::summarise(
+      summarise(
         effect=mean(get(var_lst[v])),
         .groups = "drop") %>%
-      dplyr::mutate(var=var_lst[v])
+      mutate(var=var_lst[v])
       
     pred_brkdn %<>% bind_rows(pred_brkdn_v)
   }
 
   # result set
   return(pred_brkdn)
+}
+
+iptw_calc<-function(
+  wt_long, # unit of obs-time per row
+  id_col = 'id', # name of id column
+  time_col = 'time', # name of time index column
+  tgt_col = 'tgt', # name of propensity score target
+  wt_col = 'wt', # name of the value column
+  use_stablizer = TRUE,
+  run_diagnositic = TRUE,
+  truncate = FALSE
+){
+  
 }
 
 # bayesopt_rf<-function(
