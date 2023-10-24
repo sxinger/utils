@@ -355,8 +355,17 @@ prune_xgb<-function(
     verbose = verbose
   )
   
+  #--collect training results
+  valid_tr<-data.frame(
+    id = row.names(trainX),
+    actual = getinfo(dtrain,"label"),
+    pred = predict(xgb_tune,dtrain),
+    stringsAsFactors = F
+  )
+
   #--collect testing results
-  valid<-data.frame(
+  valid_ts<-data.frame(
+    id = row.names(testX),
     actual = getinfo(dtest,"label"),
     pred = predict(xgb_tune,dtest),
     stringsAsFactors = F
@@ -368,7 +377,8 @@ prune_xgb<-function(
   #--save model and other results
   result<-list(
     model = xgb_tune,
-    pred_df = valid,
+    pred_tr = valid_tr,
+    pred_ts = valid_ts,
     feat_imp = feat_imp
   )
   return(result)
@@ -475,7 +485,7 @@ explain_model<-function(
 }
 
 iptw_calc<-function(
-  wt_long, # unit of obs-time per row
+  wt_long, # unit of obs-tgt-time per row
   id_col = 'id', # name of id column
   time_col = 'time', # name of time index column
   tgt_col = 'tgt', # name of propensity score target
@@ -526,6 +536,9 @@ iptw_calc<-function(
       mutate(iptw = pmin(pmax(lb,iptw),ub))
   }
 
+  # convert column name back
+  wt_df %<>% 
+    rename_at(vars(int_nm), ~ ext_nm)
   return(wt_df)
 }
 
