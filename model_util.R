@@ -428,6 +428,11 @@ explain_model<-function(
     x_val_b %<>%
       bind_rows(cbind(as.data.frame(as.matrix(X[idxset,which(colnames(X) %in% var_nm)])),
                       boot=b,idx=idxset))
+    
+    # report progress
+    if(verb){
+      cat("bootstrapped shap values generated:",b,"./n")
+    }
   }
   
   pred_brkdn<-c()
@@ -461,7 +466,7 @@ explain_model<-function(
 
     # report progress
     if(verb){
-      cat("shap value generated for: ",var_lst[v])
+      cat("shap value generated for:",var_lst[v],"./n")
     }
   }
 
@@ -476,10 +481,52 @@ iptw_calc<-function(
   tgt_col = 'tgt', # name of propensity score target
   wt_col = 'wt', # name of the value column
   use_stablizer = TRUE,
-  run_diagnositic = TRUE,
-  truncate = FALSE
+  truncate = FALSE,
+  truncate_lower = 0.01,
+  truncate_upper = 0.99
 ){
-  
+  ext_nm<-c(id_col,time_col,tgt_col,wt_col)
+  int_nm<-c('id','time','tgt','wt')
+
+  # calculate cumulative product
+  wt_df<-wt_long %>%
+    rename_at(vars(ext_nm), ~ int_nm)
+    group_by(id,tgt) %>%
+    arrange(time) %>% 
+    mutate(cum_wt = cumprod(wt)) %>%
+    ungroup
+
+  #  calculate numerator
+  wt_num<-wt_df %>% 
+      group_by(id,tgt,time) %>%
+      summarise(num = mean(wt,.groups = 'drop')) 
+  if(use_stablizer){
+    wt_num<-wt_num %>%
+      group_by(id,tgt) %>%
+      mutate(num_lag = lag(num,n=1L,order_by=time)) %>% 
+      mutate(num = num_lag) %>% select(-num_lag)
+  }eles{
+    wt_num<-wt_num %>% 
+      mutate(num = 1)
+  }
+
+  # calculate iptw ratio
+  wt_df %<>%
+    inner_join(wt_num,by=c("id","tgt","time")) %>%
+    mutate(iptw = num/wt)
+
+  # truncation
+  if(truncate){
+    wt_df %<>%
+      arrange(iptw) %>%
+      mutate(
+        lb=quantile(iptw,probs=truncate_lower),
+        ub=quantile(iptw,probs=truncate_upper)
+      ) %>% 
+      mutate(iptw = pmin(pmax(lb,iptw),ub))
+  }
+
+  return(wt_df)
 }
 
 # bayesopt_rf<-function(
