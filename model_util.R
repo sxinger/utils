@@ -505,7 +505,7 @@ iptw_calc<-function(
       group_by(id,tgt) %>%
       mutate(num_lag = lag(num,n=1L,order_by=time)) %>% 
       mutate(num = num_lag) %>% select(-num_lag)
-  }eles{
+  }else{
     wt_num<-wt_num %>% 
       mutate(num = 1)
   }
