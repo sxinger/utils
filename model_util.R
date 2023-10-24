@@ -357,7 +357,6 @@ prune_xgb<-function(
   
   #--collect training results
   valid_tr<-data.frame(
-    id = row.names(trainX),
     actual = getinfo(dtrain,"label"),
     pred = predict(xgb_tune,dtrain),
     stringsAsFactors = F
@@ -365,7 +364,6 @@ prune_xgb<-function(
 
   #--collect testing results
   valid_ts<-data.frame(
-    id = row.names(testX),
     actual = getinfo(dtest,"label"),
     pred = predict(xgb_tune,dtest),
     stringsAsFactors = F
