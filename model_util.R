@@ -311,6 +311,7 @@ prune_xgb<-function(
   print_every_n=50
 
 ){
+  #!! # dtrain, dtest are required to have attr:'id'
   #--determine number of trees, or steps (more rounds, early stopping)
   bst <- xgb.cv(
     params = list(
@@ -489,41 +490,27 @@ iptw_calc<-function(
   id_col = 'id', # name of id column
   time_col = 'time', # name of time index column
   tgt_col = 'tgt', # name of propensity score target
-  wt_col = 'wt', # name of the value column
-  use_stablizer = TRUE,
+  wt_den_col = 'wt_den', # name of the weight column
+  wt_num_col = 'wt_num', # name of the weight stablizer column 
   truncate = FALSE,
   truncate_lower = 0.01,
   truncate_upper = 0.99
 ){
-  ext_nm<-c(id_col,time_col,tgt_col,wt_col)
-  int_nm<-c('id','time','tgt','wt')
+  ext_nm<-c(id_col,time_col,tgt_col,wt_den_col,wt_num_col)
+  int_nm<-c('id','time','tgt','wt_den','wt_num')
+  wt_df<-wt_long %>%
+    rename_at(vars(ext_nm), ~ int_nm) 
+
+  # calculate per-pat-t ratio
+  wt_df %<>% 
+    mutate(wt_rt = wt_num/wt_den)
 
   # calculate cumulative product
-  wt_df<-wt_long %>%
-    rename_at(vars(ext_nm), ~ int_nm)
+  wt_df %<>%
     group_by(id,tgt) %>%
     arrange(time) %>% 
-    mutate(cum_wt = cumprod(wt)) %>%
+    mutate(iptw = cumprod(wt_rt)) %>%
     ungroup
-
-  #  calculate numerator
-  wt_num<-wt_df %>% 
-      group_by(id,tgt,time) %>%
-      summarise(num = mean(wt,.groups = 'drop')) 
-  if(use_stablizer){
-    wt_num<-wt_num %>%
-      group_by(id,tgt) %>%
-      mutate(num_lag = lag(num,n=1L,order_by=time)) %>% 
-      mutate(num = num_lag) %>% select(-num_lag)
-  }else{
-    wt_num<-wt_num %>% 
-      mutate(num = 1)
-  }
-
-  # calculate iptw ratio
-  wt_df %<>%
-    inner_join(wt_num,by=c("id","tgt","time")) %>%
-    mutate(iptw = num/wt)
 
   # truncation
   if(truncate){
@@ -536,10 +523,14 @@ iptw_calc<-function(
       mutate(iptw = pmin(pmax(lb,iptw),ub))
   }
 
-  # convert column name back
+  # product over multiple ps targets
   wt_df %<>% 
+    group_by(id,time) %>%
+    summarise(iptw = prod(iptw)) %>%
+    # convert column name back
     rename_at(vars(int_nm), ~ ext_nm)
-  return(wt_df)
+  
+  return(wt_df)  
 }
 
 # bayesopt_rf<-function(
