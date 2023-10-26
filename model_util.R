@@ -499,11 +499,20 @@ iptw_calc<-function(
   ext_nm<-c(id_col,time_col,tgt_col,wt_den_col,wt_num_col)
   int_nm<-c('id','time','tgt','wt_den','wt_num')
   wt_df<-wt_long %>%
-    rename_at(vars(ext_nm), ~ int_nm) 
-
+    rename_at(vars(ext_nm), ~ int_nm) %>%
   # calculate per-pat-t ratio
-  wt_df %<>% 
     mutate(iptw = wt_num/wt_den)
+  
+  # truncation
+  if(truncate){
+    wt_df %<>%
+      arrange(iptw) %>%
+      mutate(
+        lb=quantile(iptw,probs=truncate_lower),
+        ub=quantile(iptw,probs=truncate_upper)
+      ) %>% 
+      mutate(iptw = pmin(pmax(lb,iptw),ub))
+  }
 
   # product over multiple ps targets
   wt_df %<>% 
