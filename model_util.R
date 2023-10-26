@@ -485,11 +485,11 @@ explain_model<-function(
   return(pred_brkdn)
 }
 
-iptw_calc<-function(
+ipw.naive<-function(
   wt_long, # unit of obs-tgt-time per row
   id_col = 'id', # name of id column
   time_col = 'time', # name of time index column
-  tgt_col = 'tgt', # name of propensity score target
+  tgt_col = 'tgt', # name of propensity score target (multiple)
   wt_den_col = 'wt_den', # name of the weight column
   wt_num_col = 'wt_num', # name of the weight stablizer column 
   truncate = FALSE,
