@@ -503,14 +503,12 @@ iptw_calc<-function(
 
   # calculate per-pat-t ratio
   wt_df %<>% 
-    mutate(wt_rt = wt_num/wt_den)
+    mutate(iptw = wt_num/wt_den)
 
-  # calculate cumulative product
-  wt_df %<>%
-    group_by(id,tgt) %>%
-    arrange(time) %>% 
-    mutate(iptw = cumprod(wt_rt)) %>%
-    ungroup
+  # product over multiple ps targets
+  wt_df %<>% 
+    group_by(id,time) %>%
+    summarise(iptw = prod(iptw))
 
   # truncation
   if(truncate){
@@ -523,11 +521,10 @@ iptw_calc<-function(
       mutate(iptw = pmin(pmax(lb,iptw),ub))
   }
 
-  # product over multiple ps targets
+  # convert column name back
+  ext_nm<-c(id_col,time_col)
+  int_nm<-c('id','time')
   wt_df %<>% 
-    group_by(id,time) %>%
-    summarise(iptw = prod(iptw)) %>%
-    # convert column name back
     rename_at(vars(int_nm), ~ ext_nm)
   
   return(wt_df)  
