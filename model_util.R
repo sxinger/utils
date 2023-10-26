@@ -496,10 +496,11 @@ ipw.naive<-function(
   truncate_lower = 0.01,
   truncate_upper = 0.99
 ){
+  # require(recipes)
   ext_nm<-c(id_col,time_col,tgt_col,wt_den_col,wt_num_col)
   int_nm<-c('id','time','tgt','wt_den','wt_num')
   wt_df<-wt_long %>%
-    step_rename_at(vars(ext_nm), ~ int_nm) %>%
+    rename_at(vars(ext_nm), ~ int_nm) %>%
   # calculate per-pat-t ratio
     mutate(iptw = wt_num/wt_den)
   
@@ -534,7 +535,7 @@ ipw.naive<-function(
   ext_nm<-c(id_col,time_col)
   int_nm<-c('id','time')
   wt_df %<>% 
-    step_rename_at(vars(int_nm), ~ ext_nm)
+    rename_at(vars(int_nm), ~ ext_nm)
   
   return(wt_df)  
 }
