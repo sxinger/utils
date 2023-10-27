@@ -519,7 +519,7 @@ ipw.naive<-function(
 
   # product over multiple ps targets, per pat-t
   wt_df %<>% 
-    group_by(pick(c('id','time',ot_cols))) %>%
+    group_by(all_of(c('id','time',ot_cols))) %>%
     summarise(iptw = prod(iptw),.groups = 'drop')
 
   # truncation
