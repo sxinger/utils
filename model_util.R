@@ -492,6 +492,7 @@ ipw.naive<-function(
   tgt_col = 'tgt', # name of propensity score target (multiple)
   wt_den_col = 'wt_den', # name of the weight column
   wt_num_col = 'wt_num', # name of the weight stablizer column 
+  ot_cols = c('tgt','actual'), # other columns needed to be preserved, unique value per pat t
   truncate = FALSE,
   truncate_lower = 0.01,
   truncate_upper = 0.99
@@ -500,42 +501,44 @@ ipw.naive<-function(
   ext_nm<-c(id_col,time_col,tgt_col,wt_den_col,wt_num_col)
   int_nm<-c('id','time','tgt','wt_den','wt_num')
   wt_df<-wt_long %>%
-    rename_at(vars(ext_nm), ~ int_nm) %>%
+    rename_with( ~ int_nm, all_of(ext_nm)) %>%
   # calculate per-pat-t ratio
     mutate(iptw = wt_num/wt_den)
   
   # truncation
   if(truncate){
     wt_df %<>%
+      group_by(time) %>%
       arrange(iptw) %>%
       mutate(
         lb=quantile(iptw,probs=truncate_lower),
         ub=quantile(iptw,probs=truncate_upper)
       ) %>% 
       mutate(iptw = pmin(pmax(lb,iptw),ub))
-  }
+  } %>% ungroup
 
-  # product over multiple ps targets
+  # product over multiple ps targets, per pat-t
   wt_df %<>% 
-    group_by(id,time) %>%
+    group_by(pick(c('id','time',ot_cols))) %>%
     summarise(iptw = prod(iptw),.groups = 'drop')
 
   # truncation
   if(truncate){
     wt_df %<>%
+      group_by(time) %>%
       arrange(iptw) %>%
       mutate(
         lb=quantile(iptw,probs=truncate_lower),
         ub=quantile(iptw,probs=truncate_upper)
       ) %>% 
       mutate(iptw = pmin(pmax(lb,iptw),ub))
-  }
+  } %>% ungroup
 
   # convert column name back
   ext_nm<-c(id_col,time_col)
   int_nm<-c('id','time')
   wt_df %<>% 
-    rename_at(vars(int_nm), ~ ext_nm)
+    rename_with( ~ ext_nm, all_of(int_nm)) %>%
   
   return(wt_df)  
 }
