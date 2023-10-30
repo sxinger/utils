@@ -517,10 +517,17 @@ ipw.naive<-function(
       mutate(iptw = pmin(pmax(lb,iptw),ub))
   } %>% ungroup
 
+  # cumulative product over time-points, per pat-target
+  wt_df %<>% 
+    group_by(across(all_of(unique(c('id',ot_cols))))) %>%
+    arrange(time) %>% 
+    mutate(iptw_cum = cumprod(iptw)) %>% 
+    ungroup
+
   # product over multiple ps targets, per pat-t
   wt_df %<>% 
-    group_by(across(all_of(c('id','time',ot_cols)))) %>%
-    summarise(iptw = prod(iptw),.groups = 'drop')
+    group_by(across(all_of(unique(c('id','time',ot_cols))))) %>%
+    summarise(iptw = prod(iptw_cum),.groups = 'drop')
 
   # truncation
   if(truncate){
