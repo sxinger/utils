@@ -504,18 +504,6 @@ ipw.naive<-function(
     rename_with( ~ int_nm, all_of(ext_nm)) %>%
   # calculate per-pat-t ratio
     mutate(iptw = wt_num/wt_den)
-  
-  # truncation
-  if(truncate){
-    wt_df %<>%
-      group_by(time) %>%
-      arrange(iptw) %>%
-      mutate(
-        lb=quantile(iptw,probs=truncate_lower),
-        ub=quantile(iptw,probs=truncate_upper)
-      ) %>% 
-      mutate(iptw = pmin(pmax(lb,iptw),ub))
-  } %>% ungroup
 
   # cumulative product over time-points, per pat-target
   wt_df %<>% 
