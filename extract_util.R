@@ -151,6 +151,7 @@ load_valueset.curated<-function(
         ))
     }
   }
+  
   # return data.frame
   out<-lookup_tbl %>% 
     inner_join(meta_tbl,by="CODE_GRP")
@@ -232,9 +233,9 @@ load_valueset<-function(
 ){
   vs_load_func<-get(paste0("load_valueset.",vs_template))
   if(vs_template=="curated"){
-    lookup_tbl<-vs_load_func(vs_url=vs_url,vs_name_str=vs_name_str)
-  }else{
     lookup_tbl<-vs_load_func(vs_url=vs_url,vs_name_str=vs_name_str,add_meta = add_meta)
+  }else{
+    lookup_tbl<-vs_load_func(vs_url=vs_url,vs_name_str=vs_name_str)
   }
   
   # run query
