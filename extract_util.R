@@ -24,7 +24,10 @@ cdm_code_type_map<-function(cdtype){
   }
 }
 
-load_valueset.ncbo<-function(vs_url = "",vs_name_str = ""){
+load_valueset.ncbo<-function(
+  vs_url = "",
+  vs_name_str = ""
+){
   # load valueset in json
   vs_file_type<-gsub(".*\\.","=",vs_url)
   vs_file<-jsonlite::fromJSON(vs_url)
@@ -59,7 +62,10 @@ load_valueset.ncbo<-function(vs_url = "",vs_name_str = ""){
   return(lookup_tbl)
 }
 
-load_valueset.rxnav<-function(vs_url = "",vs_name_str = ""){
+load_valueset.rxnav<-function(
+  vs_url = "",
+  vs_name_str = ""
+){
   # load valueset in json
   vs_file_type<-gsub(".*\\.","=",vs_url)
   vs_file<-jsonlite::fromJSON(vs_url)
@@ -86,55 +92,75 @@ load_valueset.rxnav<-function(vs_url = "",vs_name_str = ""){
   return(lookup_tbl)
 }
 
-load_valueset.curated<-function(vs_url = "",vs_name_str = ""){
+load_valueset.curated<-function(
+  vs_url = "",
+  vs_name_str = "",
+  add_meta = FALSE
+){
   # load valueset in json
   vs_file_type<-gsub(".*\\.","=",vs_url)
   vs_file<-jsonlite::fromJSON(vs_url)
   
   # initialize lookup table
-  lookup_tbl<-data.frame(CODE_TYPE=as.character(),
-                         CODE_TYPE_CDM=as.character(),
-                         CODE_SUBTYPE=as.character(),
-                         CODE=as.character(),
-                         CODE_GRP=as.character(),
-                         stringsAsFactors=F)
-  
-  # main code body for parsing json file
+  lookup_tbl<-data.frame(
+    CODE_TYPE=as.character(),
+    CODE_TYPE_CDM=as.character(),
+    CODE=as.character(),
+    CODE_GRP=as.character(),
+    stringsAsFactors=F
+  )
+  if(add_meta){
+    meta_tbl<-c()
+  }
+
+  # search closest concept key
   vs_name_list<-names(vs_file)
-  vs_name_dist<-stringdist(tolower(vs_name_str),vs_name_list, method="jw")
-  vs_name_match<-vs_name_list[which.min(vs_name_dist)]
-  vs<-vs_file[[vs_name_match]]
-  for(cd_type in names(vs)){
-    vs_sub<-vs[[cd_type]]
-    for(cd_subtype in names(vs_sub)){
-      # skip if empty
-      if(length(vs_sub[[cd_subtype]])==0) next
-      # subtype of icd9-cm, icd10-cm codes are: lev0, lev1, lev2
-      if(cd_subtype %in% c('lev0','lev1','lev2')){
-        cd_lst<-vs_sub[[cd_subtype]]
-        # subtypes of hcpcs, icd10-pcs codes are: range, list
-      }else if(cd_subtype=="range"){
-        rg2vec<-lapply(vs_sub[[cd_subtype]],
-                       function(x)seq(as.numeric(strsplit(x,"-")[[1]][1]),as.numeric(strsplit(x,"-")[[1]][2])))
-        cd_lst<-unlist(rg2vec)
-        cd_subtype<-"exact"
-      }else if(cd_subtype %in% c("icd10-pcs","exact")){
-        cd_lst<-vs_sub[[cd_subtype]]
-      }
+  if(vs_name_str != ""){
+    vs_name_dist<-stringdist(tolower(vs_name_str),vs_name_list, method="jw")
+    vs_name_match<-vs_name_list[which.min(vs_name_dist)]
+  }else{
+    vs_name_match<-vs_name_list
+  }
+
+  for(key in vs_name_match){
+    vs<-vs_file[[key]]
+    if(add_meta){
+      # metadata
+      meta_tbl %<>% 
+        bind_rows(
+          cbind(
+            CODE_GRP=key,
+            as.data.frame(do.call(cbind, vs[["meta"]]))
+          )
+        )
+    }
+
+    # valuesets
+    for(cd_type in names(vs)){
+      if(cd_type == "meta") next
+      # exact list without decimal points
+      cd_lst<-vs[[cd_type]] 
+      # stack up
       lookup_tbl %<>%
-        bind_rows(data.frame(CODE_TYPE=cd_type,
-                             CODE_TYPE_CDM=cdm_code_type_map(cd_type),
-                             CODE_SUBTYPE=cd_subtype,
-                             CODE=as.character(cd_lst),
-                             CODE_GRP=vs_name_match,
-                             stringsAsFactors = F))
+        bind_rows(data.frame(
+          CODE_TYPE=cd_type,
+          CODE_TYPE_CDM=cdm_code_type_map(cd_type),
+          CODE=as.character(cd_lst),
+          CODE_GRP=key,
+          stringsAsFactors = F
+        ))
     }
   }
   # return data.frame
-  return(lookup_tbl)
+  out<-lookup_tbl %>% 
+    inner_join(meta_tbl,by="CODE_GRP")
+  return(out)
 }
 
-load_valueset.ecqm<-function(vs_url = "",vs_name_str = ""){
+load_valueset.ecqm<-function(
+  vs_url = "",
+  vs_name_str = ""
+){
   # load valueset in json
   vs_file_type<-gsub(".*\\.","=",vs_url)
   vs_file<-jsonlite::fromJSON(vs_url)
@@ -166,7 +192,10 @@ load_valueset.ecqm<-function(vs_url = "",vs_name_str = ""){
   return(lookup_tbl)
 }
 
-load_valueset.vsac<-function(vs_url = "",vs_name_str = ""){
+load_valueset.vsac<-function(
+  vs_url = "",
+  vs_name_str = ""
+){
   # load valueset in json
   vs_file_type<-gsub(".*\\.","=",vs_url)
   lookup_tbl<-jsonlite::fromJSON(vs_url) %>%
@@ -193,6 +222,7 @@ load_valueset<-function(
                   "vsac"),
   vs_url = "",
   vs_name_str = "",
+  add_meta = TRUE,
   dry_run = TRUE,
   conn=NULL,
   write_to_schema = "PUBLIC",
@@ -201,7 +231,11 @@ load_valueset<-function(
   file_encoding ="latin-1"
 ){
   vs_load_func<-get(paste0("load_valueset.",vs_template))
-  lookup_tbl<-vs_load_func(vs_url=vs_url,vs_name_str=vs_name_str)
+  if(vs_template=="curated"){
+    lookup_tbl<-vs_load_func(vs_url=vs_url,vs_name_str=vs_name_str)
+  }else{
+    lookup_tbl<-vs_load_func(vs_url=vs_url,vs_name_str=vs_name_str,add_meta = add_meta)
+  }
   
   # run query
   if(dry_run==TRUE){
