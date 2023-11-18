@@ -533,7 +533,7 @@ ipw.naive<-function(
   ext_nm<-c(id_col,time_col)
   int_nm<-c('id','time')
   wt_df %<>% 
-    rename_with( ~ ext_nm, all_of(int_nm)) %>%
+    rename_with( ~ ext_nm, all_of(int_nm))
   
   return(wt_df)  
 }
