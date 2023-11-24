@@ -489,7 +489,6 @@ ipw.naive<-function(
   wt_long, # unit of obs-tgt-time per row
   id_col = 'id', # name of id column
   time_col = 'time', # name of time index column
-  tgt_col = 'tgt', # name of propensity score target (multiple)
   wt_den_col = 'wt_den', # name of the weight column
   wt_num_col = 'wt_num', # name of the weight stablizer column 
   ot_cols = c('tgt','actual'), # other columns needed to be preserved, unique value per pat t
@@ -498,8 +497,8 @@ ipw.naive<-function(
   truncate_upper = 0.99
 ){
   # require(recipes)
-  ext_nm<-c(id_col,time_col,tgt_col,wt_den_col,wt_num_col)
-  int_nm<-c('id','time','tgt','wt_den','wt_num')
+  ext_nm<-c(id_col,time_col,wt_den_col,wt_num_col)
+  int_nm<-c('id','time','wt_den','wt_num')
   wt_df<-wt_long %>%
     rename_with( ~ int_nm, all_of(ext_nm)) %>%
   # calculate per-pat-t ratio
