@@ -398,7 +398,7 @@ explain_model<-function(
   
   #identify top k features
   var_imp<-xgb_rslt$feat_imp %>% 
-    slice(seq_len(top_k)) %>%
+    dplyr::slice(seq_len(top_k)) %>%
     select(Feature, Gain)
   var_nm<-var_imp$Feature
 
