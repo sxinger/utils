@@ -330,32 +330,33 @@ get_perf_summ<-function(
       roc_ci[[1]],
       roc_ci[[2]],
       roc_ci[[3]],
-      perf_at_i$cutoff[which.min(perf_at$Euclid_meas)],
-      perf_at_i$rec_sens[which.min(perf_at$Euclid_meas)],
-      perf_at_i$spec[which.min(perf_at$Euclid_meas)],
-      perf_at_i$ppv[which.min(perf_at$Euclid_meas)],
-      perf_at_i$npv[which.min(perf_at$Euclid_meas)],
+      perf_at_i$cutoff[which.min(perf_at_i$Euclid_meas)],
+      perf_at_i$rec_sens[which.min(perf_at_i$Euclid_meas)],
+      perf_at_i$spec[which.min(perf_at_i$Euclid_meas)],
+      perf_at_i$ppv[which.min(perf_at_i$Euclid_meas)],
+      perf_at_i$npv[which.min(perf_at_i$Euclid_meas)],
       pr$auc.integral,
       pr$auc.davis.goadrich,
-      perf_at_i$prec[which.min(perf_at$prec_rec_dist)],
-      perf_at_i$rec_sens[which.min(perf_at$prec_rec_dist)],
-      perf_at_i$fscore[which.min(perf_at$prec_rec_dist)]
+      perf_at_i$prec[which.min(perf_at_i$prec_rec_dist)],
+      perf_at_i$rec_sens[which.min(perf_at_i$prec_rec_dist)],
+      perf_at_i$fscore[which.min(perf_at_i$prec_rec_dist)]
     ),
     stringsAsFactors = F) %>%
     bind_rows(
       perf_at_i %>% 
       summarize(
         prec_m=mean(prec,na.rm=T),
-                sens_m=mean(rec_sens,na.rm=T),
-                spec_m=mean(spec,na.rm=T),
-                ppv_m=mean(ppv,na.rm=T),
-                npv_m=mean(npv,na.rm=T),
-                acc_m=mean(acc,na.rm=T),
-                fscore_m=mean(fscore,na.rm=T),
-                mcc_m=mean(mcc,na.rm=T),
-                .groups = "drop"
+        sens_m=mean(rec_sens,na.rm=T),
+        spec_m=mean(spec,na.rm=T),
+        ppv_m=mean(ppv,na.rm=T),
+        npv_m=mean(npv,na.rm=T),
+        acc_m=mean(acc,na.rm=T),
+        fscore_m=mean(fscore,na.rm=T),
+        mcc_m=mean(mcc,na.rm=T),
+        .groups = "drop"
       ) %>%
       pivot_longer(
+        cols = everything(),
         names_to = "overall_meas",
         values_to = "meas_val"
       )
@@ -371,9 +372,9 @@ get_perf_summ<-function(
   perf_summ %<>% 
     group_by(overall_meas) %>%
     summarise(
-      meas_val_m  = median(meas_val),
-      meas_val_lb = quantile(meas_val,0.025),
-      meas_val_ub = quantile(meas_val,0.975),
+      meas_val_m  = median(meas_val,na.rm=T),
+      meas_val_lb = quantile(meas_val,0.025,na.rm=T),
+      meas_val_ub = quantile(meas_val,0.975,na.rm=T),
       .groups = "drop"  
     )
   out<-list(perf_summ=perf_summ)
@@ -386,9 +387,9 @@ get_perf_summ<-function(
       )
       group_by(cutff,meas) %>% 
       summarise(
-        meas_val_m = median(meas_val), 
-        meas_val_lb = quantile(meas_val,0.025),
-        meas_val_ub = quantile(meas_val,0.975),
+        meas_val_m = median(meas_val,na.rm=T), 
+        meas_val_lb = quantile(meas_val,0.025,na.rm=T),
+        meas_val_ub = quantile(meas_val,0.975,na.rm=T),
         .groups = "drop"
       )
     out$perf_at<-perf_at
