@@ -384,7 +384,7 @@ get_perf_summ<-function(
         cols = -c(cutoff),
         names_to = "meas",
         values_to = "meas_val"
-      )
+      ) %>%
       group_by(cutoff,meas) %>% 
       summarise(
         meas_val_m = median(meas_val,na.rm=T), 
