@@ -401,7 +401,7 @@ get_calibr<-function(
   pred,
   real,
   n_bin=20,
-  hl_test=TRUE
+  test=TRUE
 ){
   # require("ResourceSelection")
   calib<-data.frame(pred=pred,
@@ -424,8 +424,15 @@ get_calibr<-function(
                   binCI_upper = pred_p+1.96*sqrt(y_p*(1-y_p)/expos))
 
   out<-list(calib = calib)
-  if(hl_test){
-    out[["hl"]]<-hoslem.test(real, pred, g = n_bin)
+  if(test){
+    hl<-hoslem.test(real, pred, g = n_bin)
+    omnibus<-summary(aov(glm(real~pred,family="binomial")))
+    out[["test"]]<-data.frame(
+      test = c('hl','omnibus'),
+      statistics = c(hl$statistic,omnibus[[1]][["F value"]][1]),
+      pval = c(hl$p.value,omnibus[[1]][["Pr(>F)"]][1])
+    )
+    rownames(out[["test"]])<-NULL
   }
   return(out)
 }
