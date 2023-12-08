@@ -345,14 +345,14 @@ get_perf_summ<-function(
     bind_rows(
       perf_at_i %>% 
       summarize(
-        prec_m=mean(prec,na.rm=T),
-        sens_m=mean(rec_sens,na.rm=T),
-        spec_m=mean(spec,na.rm=T),
-        ppv_m=mean(ppv,na.rm=T),
-        npv_m=mean(npv,na.rm=T),
-        acc_m=mean(acc,na.rm=T),
-        fscore_m=mean(fscore,na.rm=T),
-        mcc_m=mean(mcc,na.rm=T),
+        prec_m = mean(prec,na.rm=T),
+        sens_m = mean(rec_sens,na.rm=T),
+        spec_m = mean(spec,na.rm=T),
+        ppv_m = mean(ppv,na.rm=T),
+        npv_m = mean(npv,na.rm=T),
+        acc_m = mean(acc,na.rm=T),
+        fscore_m = mean(fscore,na.rm=T),
+        mcc_m = mean(mcc,na.rm=T),
         .groups = "drop"
       ) %>%
       pivot_longer(
@@ -385,7 +385,7 @@ get_perf_summ<-function(
         names_to = "meas",
         values_to = "meas_val"
       )
-      group_by(cutff,meas) %>% 
+      group_by(cutoff,meas) %>% 
       summarise(
         meas_val_m = median(meas_val,na.rm=T), 
         meas_val_lb = quantile(meas_val,0.025,na.rm=T),
