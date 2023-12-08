@@ -381,7 +381,7 @@ get_perf_summ<-function(
   if(keep_all_cutoffs){
     perf_at %<>% 
       pivot_longer(
-        !cutoff,
+        cols = -c(cutoff),
         names_to = "meas",
         values_to = "meas_val"
       )
