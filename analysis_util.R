@@ -400,8 +400,10 @@ get_perf_summ<-function(
 get_calibr<-function(
   pred,
   real,
-  n_bin=20
+  n_bin=20,
+  hl_test=TRUE
 ){
+  # require("ResourceSelection")
   calib<-data.frame(pred=pred,
                     y=real) %>%
     arrange(pred) %>%
@@ -420,8 +422,12 @@ get_calibr<-function(
     dplyr::mutate(y_p=y_agg/expos) %>%
     dplyr::mutate(binCI_lower = pmax(0,pred_p-1.96*sqrt(y_p*(1-y_p)/expos)),
                   binCI_upper = pred_p+1.96*sqrt(y_p*(1-y_p)/expos))
-  
-  return(calib)
+
+  out<-list(calib = calib)
+  if(hl_test){
+    out[["hl"]]<-hoslem.test(real, pred, g = n_bin)
+  }
+  return(out)
 }
 
 # require(survival,SurvMetrics)
