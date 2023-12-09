@@ -425,6 +425,8 @@ get_calibr<-function(
 
   out<-list(calib = calib)
   if(test){
+    # brier score
+    brier<-mean((real-pred)^2)
     # hosmer-lemeshow
     hl<-hoslem.test(real, pred, g = n_bin)
     # recalibration test
@@ -433,9 +435,9 @@ get_calibr<-function(
     tsc<-(1-sfit$coefficients[2,1])/sfit$coefficients[2,2]
     pval<- 2 * pt(abs(tsc), df = df.residual(fit), lower.tail = FALSE)
     out[["test"]]<-data.frame(
-      test = c('hl','recalib'),
-      statistics = c(hl$statistic,tsc),
-      pval = c(hl$p.value,pval)
+      test = c('hl','recalib','brier'),
+      statistics = c(hl$statistic,tsc,brier),
+      pval = c(hl$p.value,pval,NA)
     )
     rownames(out[["test"]])<-NULL
   }
