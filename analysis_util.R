@@ -432,12 +432,14 @@ get_calibr<-function(
     # recalibration test
     fit<-lm(y_p~pred_p,data=calib)
     sfit<-summary(fit)
-    tsc<-(1-sfit$coefficients[2,1])/sfit$coefficients[2,2]
-    pval<- 2 * pt(abs(tsc), df = df.residual(fit), lower.tail = FALSE)
+    t_b1<-(1-sfit$coefficients[2,1])/sfit$coefficients[2,2]
+    pval_b1<- 2 * pt(abs(t_b1), df = df.residual(fit), lower.tail = FALSE)
+    t_b0<-sfit$coefficients[1,3]
+    pval_b0<-sfit$coefficients[1,4]
     out[["test"]]<-data.frame(
-      test = c('hl','recalib','brier'),
-      statistics = c(hl$statistic,tsc,brier),
-      pval = c(hl$p.value,pval,NA)
+      test = c('hl','recalib-intx','recalib-slope','brier'),
+      statistics = c(hl$statistic,t_b1,t_b0,brier),
+      pval = c(hl$p.value,pval_b1,pval_b0,NA)
     )
     rownames(out[["test"]])<-NULL
   }
