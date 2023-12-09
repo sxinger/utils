@@ -425,12 +425,17 @@ get_calibr<-function(
 
   out<-list(calib = calib)
   if(test){
+    # hosmer-lemeshow
     hl<-hoslem.test(real, pred, g = n_bin)
-    omnibus<-summary(aov(glm(real~pred,family="binomial")))
+    # recalibration test
+    fit<-lm(y_p~pred_p,data=calib)
+    sfit<-summary(fit)
+    tsc<-(1-sfit$coefficients[2,1])/sfit$coefficients[2,2]
+    pval<- 2 * pt(abs(tsc), df = df.residual(fit), lower.tail = FALSE)
     out[["test"]]<-data.frame(
-      test = c('hl','omnibus'),
-      statistics = c(hl$statistic,omnibus[[1]][["F value"]][1]),
-      pval = c(hl$p.value,omnibus[[1]][["Pr(>F)"]][1])
+      test = c('hl','recalib'),
+      statistics = c(hl$statistic,tsc),
+      pval = c(hl$p.value,pval)
     )
     rownames(out[["test"]])<-NULL
   }
