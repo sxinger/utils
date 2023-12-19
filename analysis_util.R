@@ -106,35 +106,45 @@ univar_analysis_mixed<-function(
   
   out_num<-df_num %>%
     group_by(var,grp) %>%
-    dplyr::summarise(n=length(unique(id)),
-                     val_miss=sum(is.na(val)),
-                     val_mean=mean(val,na.rm=T),
-                     val_sd=sd(val,na.rm=T),
-                     val_med=median(val,na.rm=T),
-                     val_q1=quantile(val,0.25,na.rm=T),
-                     val_q3=quantile(val,0.75,na.rm=T),
-                     val_min=min(val,na.rm=T),
-                     val_max=max(val,na.rm=T),
-                     .groups = "drop") 
+    dplyr::summarise(
+      n=length(unique(id)),
+      val_miss=sum(is.na(val)),
+      val_mean=mean(val,na.rm=T),
+      val_sd=sd(val,na.rm=T),
+      val_med=median(val,na.rm=T),
+      val_q1=quantile(val,0.25,na.rm=T),
+      val_q3=quantile(val,0.75,na.rm=T),
+      val_min=min(val,na.rm=T),
+      val_max=max(val,na.rm=T),
+      .groups = "drop"
+    ) 
 
     if(length(unique(grp))>1){
+      out_num_i<-df_num %>%
+        filter(!is.na(val)) %>%
+        nest(data=!var) %>%
+        mutate(
+          fit=map(data, ~ aov(val~grp,data=.x)),
+          tidied=map(fit,tidy)
+        ) %>%
+        unnest(tidied) %>% 
+        filter(!is.na(p.value)) %>%
+        dplyr::select(var,p.value)
+
       out_num %<>% 
-        left_join(df_num %>%
-                    nest(data=!var) %>%
-                    mutate(fit=map(data, ~ aov(val~grp,data=.x)),
-                           tidied=map(fit,tidy)) %>%
-                    unnest(tidied) %>% 
-                    filter(!is.na(p.value)) %>%
-                    dplyr::select(var,p.value),
-                  by="var") 
+        left_join(out_num_i,by="var") 
     } else {
       out_num %<>% mutate(p.value = 1)
     }
     out_num %<>% 
-      mutate(label=paste0(n,"; ",
-                          # round(val_miss/n,2),"; ", #missing rate
-                          round(val_mean,1),"(",round(val_sd,2),"); ",
-                          val_med,"(",val_q1,",",val_q3,")"))
+      mutate(
+        label=paste0(
+          n,"; ",
+          # round(val_miss/n,2),"; ", #missing rate
+          round(val_mean,1),"(",round(val_sd,2),"); ",
+          val_med,"(",val_q1,",",val_q3,")"
+        )
+      )
                     
   # chi-sq - categorical variables
   df_cat<-data.frame(cbind(id,grp,X[,(data_type=="cat")]),stringsAsFactors=F) %>%
@@ -154,11 +164,13 @@ univar_analysis_mixed<-function(
     
     if(length(unique(grp))>1){
       out_cat %<>%
-        left_join(df_cat %>%
-                    group_by(var) %>%
-                    dplyr::summarise(p.value=chisq.test(val,grp,simulate.p.value=T)$p.value,
-                                    .groups = "drop"),
-                  by="var") 
+        left_join(
+          df_cat %>%
+            group_by(var) %>%
+            dplyr::summarise(p.value=chisq.test(val,grp,simulate.p.value=T)$p.value,
+                            .groups = "drop"),
+          by="var"
+        ) 
     }else{
       out_cat %<>% mutate(p.value = 1)
     }
@@ -172,15 +184,19 @@ univar_analysis_mixed<-function(
     gather(var,val,-grp) %>% 
     mutate(val=as.character(val)) %>% 
     spread(grp,val) %>%
-    bind_rows(out_num %>%
-                mutate(label2=paste0(round(val_mean,1)," (",round(val_sd,1),");",
-                                     val_med,"(",val_q1,",",val_q3,")",
-                                    " [",round(val_miss/n,2),"]")) %>%
-                dplyr::select(var,grp,p.value,label2) %>% spread(grp,label2)) %>%
-    bind_rows(out_cat %>%
-                unite("var",c("var","val"),sep="=") %>%
-                mutate(label2=paste0(n," (",round(prop*100,1),"%)"," [",round(val_miss/n,2),"]")) %>%
-                dplyr::select(var,grp,p.value,label2) %>% spread(grp,label2)) %>%
+    bind_rows(
+      out_num %>%
+        mutate(label2=paste0(round(val_mean,1)," (",round(val_sd,1),");",
+                              val_med,"(",val_q1,",",val_q3,")",
+                            " [",round(val_miss/n,2),"]")) %>%
+        dplyr::select(var,grp,p.value,label2) %>% spread(grp,label2)
+    ) %>%
+    bind_rows(
+      out_cat %>%
+        unite("var",c("var","val"),sep="=") %>%
+        mutate(label2=paste0(n," (",round(prop*100,1),"%)"," [",round(val_miss/n,2),"]")) %>%
+        dplyr::select(var,grp,p.value,label2) %>% spread(grp,label2)
+    ) %>%
     mutate(p.value=round(p.value,4)) %>%
     separate("var",c("var","cat"),sep="=",extra="merge",fill="right") %>%
     mutate(cat=case_when(var=="n" ~ "",
@@ -205,12 +221,14 @@ univar_analysis_mixed<-function(
         group_by(var,var_lbl) %>%
         mutate(keep1row = row_number()) %>%
         ungroup %>%
-        mutate(var = case_when(keep1row==1 ~ var,
-                              TRUE ~ ""),
-               var_lbl = case_when(keep1row==1 ~ var_lbl,
-                              TRUE ~ ""),
-              p.value = case_when(keep1row==1 ~ as.character(p.value),
-                                  TRUE ~ "")) %>%
+        mutate(
+          var = case_when(keep1row==1 ~ var,
+                          TRUE ~ ""),
+          var_lbl = case_when(keep1row==1 ~ var_lbl,
+                        TRUE ~ ""),
+          p.value = case_when(keep1row==1 ~ as.character(p.value),
+                              TRUE ~ "")
+        ) %>%
         dplyr::select(-var_fac,-keep1row) %>%
         kbl() %>% kable_material(c("striped", "hover"))
   }
