@@ -143,18 +143,6 @@ ipw.lasso<-function(
   return(out)
 }
 
-ipw.rf<-function(){
-
-}
-
-ipw.gbm<-function(){
-
-}
-
-ipw.ensemble<-function(){
-
-}
-
 fast_rfe.coxph<-function(
   data_df, # data.frame including yc, x_tw, xo_vec
   time_col='time', # time column reuiqred for Surv() object
@@ -284,6 +272,28 @@ bayeopt_xgb<-function(
   return(Best_Par)
 }
 
+prune_elastnet<-function(
+  x, # matrix
+  y, # vector
+  params = list(
+    family = 'binomial', # ref to legal values for "glmnet"
+    alpha_seq = seq(1,0,by=0.1), # alpha = 1 (lasso); alpha = 0 (ridge)
+    type.measure = "class", # ref to legal values for "glmnet"
+    verb = TRUE #verbose
+  )
+){
+  for(alpha in alpha_seq){
+    fit_tw<-cv.glmnet(
+    x=x,y=y,
+    family=family,
+    type.measure = type.measure,
+    alpha=alpha
+  )
+  }
+  
+  tw<-predict(fit_tw, newx = x, s = "lambda.min", type="response")
+}
+
 prune_xgb<-function(
   dtrain,
   dtest,
@@ -384,7 +394,13 @@ prune_xgb<-function(
   return(result)
 }
 
+prune_catgbt<-function(
 
+)
+
+prune_litegbt<-function(
+
+)
 
 explain_model<-function(
   X,y,
