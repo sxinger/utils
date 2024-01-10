@@ -191,16 +191,14 @@ univar_analysis_mixed<-function(
       mutate(prop=round(n/tot,4)) 
       
       if(length(unique(grp))>1){
+        out_cat_i<-df_cat %>%
+          group_by(var) %>%
+          dplyr::summarise(
+            p.value=chisq.test(val,grp,simulate.p.value=T)$p.value,
+            .groups = "drop"
+        )
         out_cat %<>%
-          left_join(
-            df_cat %>%
-              group_by(var) %>%
-              dplyr::summarise(
-                p.value=chisq.test(val,grp,simulate.p.value=T)$p.value,
-                .groups = "drop"
-              ),
-            by="var"
-          ) 
+          left_join(out_cat_i,by="var") 
       }else{
         out_cat %<>% mutate(p.value = 1)
       }
@@ -243,7 +241,7 @@ univar_analysis_mixed<-function(
           mutate(var_lbl=var)
       } 
       # convert to html table output using kable
-      colnames(out)<-c("var","cat","p.value",paste0("exposure=",sort(unique(grp))),"var_lbl")
+      colnames(out)<-c("var","cat",paste0("exposure=",sort(unique(grp))),"p.value","var_lbl")
       out %<>% 
         mutate(var_fac=factor(var,ordered = TRUE, levels = c("n",gsub("-",".",var_lst)))) %>%
         arrange(var_fac,cat) %>%
