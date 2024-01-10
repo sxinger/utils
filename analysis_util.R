@@ -100,7 +100,10 @@ univar_analysis_mixed<-function(
 
   # line 1 summary
   out<-data.frame(cbind(id,grp,X[,1,drop=F]),stringsAsFactors=F) %>% 
-    group_by(var,grp) %>%
+    gather(var,val,-grp,-id) %>%
+      mutate(grp=as.factor(grp)) %>%
+      mutate(val=as.numeric(val))
+      group_by(var,grp) %>%
       dplyr::summarise(n=length(unique(id)),.groups = "drop") %>% 
       dplyr::select(n,grp) %>% unique %>%
       gather(var,val,-grp) %>% 
