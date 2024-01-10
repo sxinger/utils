@@ -98,7 +98,15 @@ univar_analysis_mixed<-function(
   data_type<-rep("num",length(var_lst))
   data_type[which(var_lst %in% facvar_lst,arr.ind = T)]<-"cat"
 
-  out<-c()
+  # line 1 summary
+  out<-data.frame(cbind(id,grp,X[,1,drop=F]),stringsAsFactors=F) %>% 
+    group_by(var,grp) %>%
+      dplyr::summarise(n=length(unique(id)),.groups = "drop") %>% 
+      dplyr::select(n,grp) %>% unique %>%
+      gather(var,val,-grp) %>% 
+      mutate(val=as.character(val)) %>% 
+      spread(grp,val)
+
   # anova - numerical variables
   if(length(var_lst)-length(facvar_lst)>0){
     df_num<-data.frame(cbind(id,grp,X[,(data_type=="num"),drop=F]),stringsAsFactors=F) %>%
@@ -153,21 +161,14 @@ univar_analysis_mixed<-function(
         )
       out %<>%
         bind_rows(
-          out_num %>% 
-            dplyr::select(n,grp) %>% unique %>%
-            gather(var,val,-grp) %>% 
-            mutate(val=as.character(val)) %>% 
-            spread(grp,val) %>%
-            bind_rows(
-              out_num %>%
-                mutate(label2=paste0(
-                  round(val_mean,1)," (",round(val_sd,1),");",
-                  val_med,"(",val_q1,",",val_q3,")",
-                  " [",round(val_miss/n,2),"]")
-                ) %>%
-                dplyr::select(var,grp,p.value,label2) %>% 
-                spread(grp,label2)
-            )
+          out_num %>%
+            mutate(label2=paste0(
+              round(val_mean,1)," (",round(val_sd,1),");",
+              val_med,"(",val_q1,",",val_q3,")",
+              " [",round(val_miss/n,2),"]")
+            ) %>%
+            dplyr::select(var,grp,p.value,label2) %>% 
+            spread(grp,label2)
         )
   }else{
     out_num<-c()
@@ -206,7 +207,7 @@ univar_analysis_mixed<-function(
       out_cat %<>%
         mutate(label=paste0(n,"; ","(",prop*100,"%)"))
       
-      out %<>% 
+      out %<>%
         bind_rows(
           out_cat %>%
             unite("var",c("var","val"),sep="=") %>%
