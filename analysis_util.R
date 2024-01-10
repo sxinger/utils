@@ -160,10 +160,13 @@ univar_analysis_mixed<-function(
             spread(grp,val) %>%
             bind_rows(
               out_num %>%
-                mutate(label2=paste0(round(val_mean,1)," (",round(val_sd,1),");",
-                                      val_med,"(",val_q1,",",val_q3,")",
-                                    " [",round(val_miss/n,2),"]")) %>%
-                dplyr::select(var,grp,p.value,label2) %>% spread(grp,label2)
+                mutate(label2=paste0(
+                  round(val_mean,1)," (",round(val_sd,1),");",
+                  val_med,"(",val_q1,",",val_q3,")",
+                  " [",round(val_miss/n,2),"]")
+                ) %>%
+                dplyr::select(var,grp,p.value,label2) %>% 
+                spread(grp,label2)
             )
         )
   }else{
@@ -172,7 +175,7 @@ univar_analysis_mixed<-function(
                     
   # chi-sq - categorical variables
   if(length(facvar_lst)>0){
-      df_cat<-data.frame(cbind(id,grp,X[,(data_type=="cat")]),stringsAsFactors=F) %>%
+    df_cat<-data.frame(cbind(id,grp,X[,(data_type=="cat")]),stringsAsFactors=F) %>%
       gather(var,val,-grp,-id) %>%
       mutate(grp=as.factor(grp),val=as.factor(val))
     
@@ -192,8 +195,10 @@ univar_analysis_mixed<-function(
           left_join(
             df_cat %>%
               group_by(var) %>%
-              dplyr::summarise(p.value=chisq.test(val,grp,simulate.p.value=T)$p.value,
-                              .groups = "drop"),
+              dplyr::summarise(
+                p.value=chisq.test(val,grp,simulate.p.value=T)$p.value,
+                .groups = "drop"
+              ),
             by="var"
           ) 
       }else{
@@ -208,7 +213,8 @@ univar_analysis_mixed<-function(
           out_cat %>%
             unite("var",c("var","val"),sep="=") %>%
             mutate(label2=paste0(n," (",round(prop*100,1),"%)"," [",round(val_miss/n,2),"]")) %>%
-            dplyr::select(var,grp,p.value,label2) %>% spread(grp,label2)
+            dplyr::select(var,grp,p.value,label2) %>% 
+            spread(grp,label2) 
         ) 
       
   }else{
@@ -219,9 +225,11 @@ univar_analysis_mixed<-function(
   out %<>% 
     mutate(p.value=round(p.value,4)) %>%
     separate("var",c("var","cat"),sep="=",extra="merge",fill="right") %>%
-    mutate(cat=case_when(var=="n" ~ "",
-                          is.na(cat) ~ "mean(sd); med(iqr) [miss]",
-                          TRUE ~ paste0(cat,",n(%) [miss]"))) 
+    mutate(cat=case_when(
+      var=="n" ~ "",
+      is.na(cat) ~ "mean(sd); med(iqr) [miss]",
+      TRUE ~ paste0(cat,",n(%) [miss]"))
+    ) 
     
   #output
   if(pretty){
@@ -235,7 +243,7 @@ univar_analysis_mixed<-function(
           mutate(var_lbl=var)
       } 
       # convert to html table output using kable
-      colnames(out)<-c("var","cat",paste0("exposure=",sort(unique(grp))),"p.value","var_lbl")
+      colnames(out)<-c("var","cat","p.value",paste0("exposure=",sort(unique(grp))),"var_lbl")
       out %<>% 
         mutate(var_fac=factor(var,ordered = TRUE, levels = c("n",gsub("-",".",var_lst)))) %>%
         arrange(var_fac,cat) %>%
