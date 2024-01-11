@@ -412,7 +412,6 @@ explain_model<-function(
   shap_cond = NULL, # time index
   verb = TRUE
 ){
-  
   #identify top k features
   var_imp<-xgb_rslt$feat_imp %>% 
     dplyr::slice(seq_len(top_k)) %>%
