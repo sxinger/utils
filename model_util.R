@@ -394,13 +394,13 @@ prune_xgb<-function(
   return(result)
 }
 
-prune_catgbt<-function(
+# prune_catgbt<-function(
 
-)
+# ){}
 
-prune_litegbt<-function(
+# prune_litegbt<-function(
 
-)
+# ){}
 
 explain_model<-function(
   X,y,
