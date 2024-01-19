@@ -490,12 +490,16 @@ explain_model<-function(
     
     # stack bootstrapping results
     pred_brkdn_b %<>%
-      bind_rows(cbind(as.data.frame(shap_sel),
-                      boot=b,idx=idxset))
+      bind_rows(cbind(
+        as.data.frame(shap_sel),
+        boot=b,idx=idxset
+      ))
     
     x_val_b %<>%
-      bind_rows(cbind(as.data.frame(as.matrix(X[idxset,which(colnames(X) %in% var_nm)])),
-                      boot=b,idx=idxset))
+      bind_rows(cbind(
+        as.data.frame(as.matrix(X[idxset,which(colnames(X) %in% var_nm)])),
+        boot=b,idx=idxset
+      ))
     
     # report progress
     if(verb){
@@ -534,7 +538,7 @@ explain_model<-function(
 
     # report progress
     if(verb){
-      cat("shap value generated for:",var_lst[v],"./n")
+      cat("shap value generated for:",var_lst[v],".\n")
     }
   }
 
