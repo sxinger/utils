@@ -190,108 +190,67 @@ fast_rfe.coxph<-function(
   return(out)
 }
 
-bayeopt_xgb<-function(
-  dtrain,
-  dtest,
-  folds=5,
-  params_bd=list(
-    max_depth = c(4L, 10L),
-    min_child_weight = c(2L,10L),
-    subsample = c(0.5,0.8),
-    colsample_bytree=c(0.3,0.8),
-    eta=c(0.05,0.1)
-  ),
-  N_CL=1,
-  verb=T
-){
-  # require(xgboost,ParBayesianOptimization)
-  
-  #--parallelization
-  if(N_CL > 1){
-    cl <- makeCluster(N_CL)
-    registerDoParallel(cl)
-    clusterExport(cl,'df') # copying data to clusters (note:xgb.DMatrix is not compatible with parallelization)
-    clusterEvalQ(cl,expr= {                          
-      library(xgboost) # copying model to clusters
-    })
-  }
-  
-  #--tune hyperparameter (less rounds, early stopping)
-  xgb_cv_bayes <- function(
-    max_depth=10L, min_child_weight=1L, subsample=0.7,
-    eta=0.05,colsample_bytree=0.8,lambda=1,alpha=0,gamma=1
-  ) {  
-    cv <- xgb.cv(
-      params = list(
-        booster = "gbtree",
-        max_depth = max_depth,
-        min_child_weight = min_child_weight,
-        subsample = subsample, 
-        eta = eta,
-        colsample_bytree = colsample_bytree,
-        lambda = lambda,
-        alpha = alpha,
-        gamma = gamma,
-        objective = "binary:logistic",
-        eval_metric = "auc"
-      ),
-        data = dtrain,
-        nround = 100,
-        folds = folds,
-        prediction = FALSE,
-        # showsd = TRUE,
-        early_stopping_rounds = 5,
-        maximize = TRUE,
-        verbose = 0
-    )
-    return(list(Score = cv$evaluation_log$test_auc_mean[cv$best_iteration]))
-  }
-  
-  OPT_Res <- bayesOpt(
-    FUN = xgb_cv_bayes,
-    bounds = bounds,
-    initPoints = 5,
-    iters.n = 50,
-    iters.k = N_CL,
-    parallel = TRUE,
-    acq = "ucb",
-    kappa = 2.576,
-    eps = 0.0,
-    otherHalting = list(timeLimit = 18000) #--limit maximal running time for better efficiency-- <5hr
-  )
-  
-  Best_Par<-getBestPars(OPT_Res)
-  
-  #--stop cluster
-  if(N_CL > 1){
-    stopCluster(cl)
-    registerDoSEQ()
-  }
-
-  # returen best parameters
-  return(Best_Par)
-}
-
 prune_elastnet<-function(
-  x, # matrix
-  y, # vector
+  dtrain, 
+  dtest, 
   params = list(
-    family = 'binomial', # ref to legal values for "glmnet"
-    alpha_seq = seq(1,0,by=0.1), # alpha = 1 (lasso); alpha = 0 (ridge)
-    type.measure = "class", # ref to legal values for "glmnet"
+    family = 'binomial', # ref to legal values for "glmnet",
+    alpha_seq = c(0,0.5,1), # alpha = 1 (lasso); alpha = 0 (ridge)
+    type.measure = "auc", # ref to legal values for "glmnet",
+    foldid = sample(1:5,size = length(y),replace=T) # vector of foldid
     verb = TRUE #verbose
   )
 ){
-  for(alpha in alpha_seq){
-    fit_tw<-cv.glmnet(
-    x=x,y=y,
-    family=family,
-    type.measure = type.measure,
-    alpha=alpha
+  trx<-dtrain$trx
+  try<-dtrain$try
+  result_alpha<-data.frame(
+    lambda = as.numeric(),
+    cvm = as.numeric(),
+    alpha = as.numeric()
   )
+  alpha_opt<-0 
+  cvm_opt<-Inf 
+  fit_opt<-list()
+  for(alpha in params$alpha_seq){
+    # fit model
+    fit<-cv.glmnet(
+      x = trx,
+      y = try,
+      family = params$family,
+      type.measure = params$type.measure,
+      foldid = params$foldid,
+      alpha = alpha
+    )
+    # save full search path
+    result_alpha %<>% 
+      bind_rows(cbind(
+        lambda = fit$lambda,
+        cvm = fit$cvm
+      ))
+    if(type.measure=="auc"){
+      fit_cvm<--fit$cvm
+    }else{
+      fit_cvm<-fit$cvm
+    }
+    if(fit$cvm){
+      alpha_opt<-alpha
+      fit_opt<-fit
+      cvm_opt<-fit$cvm
+    }
   }
-  
-  tw<-predict(fit_tw, newx = x, s = "lambda.min", type="response")
+
+  #--optimal alpha
+  alpha_opt<-
+  pred<-predict(fit_opt, newx = tsx, s = "lambda.min", type="response")
+
+  #--save model and other results
+  result<-list(
+    model = xgb_tune,
+    pred_tr = valid_tr,
+    pred_ts = valid_ts,
+    feat_imp = feat_imp
+  )
+    
 }
 
 prune_xgb<-function(
@@ -394,6 +353,88 @@ prune_xgb<-function(
   return(result)
 }
 
+bayeopt_xgb<-function(
+  dtrain,
+  dtest,
+  folds=5,
+  params_bd=list(
+    max_depth = c(4L, 10L),
+    min_child_weight = c(2L,10L),
+    subsample = c(0.5,0.8),
+    colsample_bytree=c(0.3,0.8),
+    eta=c(0.05,0.1)
+  ),
+  N_CL=1,
+  verb=T
+){
+  # require(xgboost,ParBayesianOptimization)
+  
+  #--parallelization
+  if(N_CL > 1){
+    cl <- makeCluster(N_CL)
+    registerDoParallel(cl)
+    clusterExport(cl,'df') # copying data to clusters (note:xgb.DMatrix is not compatible with parallelization)
+    clusterEvalQ(cl,expr= {                          
+      library(xgboost) # copying model to clusters
+    })
+  }
+  
+  #--tune hyperparameter (less rounds, early stopping)
+  xgb_cv_bayes <- function(
+    max_depth=10L, min_child_weight=1L, subsample=0.7,
+    eta=0.05,colsample_bytree=0.8,lambda=1,alpha=0,gamma=1
+  ) {  
+    cv <- xgb.cv(
+      params = list(
+        booster = "gbtree",
+        max_depth = max_depth,
+        min_child_weight = min_child_weight,
+        subsample = subsample, 
+        eta = eta,
+        colsample_bytree = colsample_bytree,
+        lambda = lambda,
+        alpha = alpha,
+        gamma = gamma,
+        objective = "binary:logistic",
+        eval_metric = "auc"
+      ),
+        data = dtrain,
+        nround = 100,
+        folds = folds,
+        prediction = FALSE,
+        # showsd = TRUE,
+        early_stopping_rounds = 5,
+        maximize = TRUE,
+        verbose = 0
+    )
+    return(list(Score = cv$evaluation_log$test_auc_mean[cv$best_iteration]))
+  }
+  
+  OPT_Res <- bayesOpt(
+    FUN = xgb_cv_bayes,
+    bounds = bounds,
+    initPoints = 5,
+    iters.n = 50,
+    iters.k = N_CL,
+    parallel = TRUE,
+    acq = "ucb",
+    kappa = 2.576,
+    eps = 0.0,
+    otherHalting = list(timeLimit = 18000) #--limit maximal running time for better efficiency-- <5hr
+  )
+  
+  Best_Par<-getBestPars(OPT_Res)
+  
+  #--stop cluster
+  if(N_CL > 1){
+    stopCluster(cl)
+    registerDoSEQ()
+  }
+
+  # returen best parameters
+  return(Best_Par)
+}
+
 # prune_catgbt<-function(
 
 # ){}
@@ -458,7 +499,7 @@ explain_model<-function(
     
     # report progress
     if(verb){
-      cat("bootstrapped shap values generated:",b,"./n")
+      cat("bootstrapped shap values generated:",b,".\n")
     }
   }
   
