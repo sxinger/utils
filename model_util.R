@@ -197,7 +197,7 @@ prune_elastnet<-function(
     family = 'binomial', # ref to legal values for "glmnet",
     alpha_seq = c(0,0.5,1), # alpha = 1 (lasso); alpha = 0 (ridge)
     type.measure = "auc", # ref to legal values for "glmnet",
-    foldid = sample(1:5,size = length(y),replace=T) # vector of foldid
+    foldid = sample(1:5,size = length(y),replace=T),# vector of foldid
     verb = TRUE #verbose
   )
 ){
@@ -225,14 +225,16 @@ prune_elastnet<-function(
     result_alpha %<>% 
       bind_rows(cbind(
         lambda = fit$lambda,
-        cvm = fit$cvm
-      ))
+        cvm = fit$cvm,
+        alpha = alpha
+    ))
+    # greedily retain optimal model (minimized)
     if(type.measure=="auc"){
       fit_cvm<--fit$cvm
     }else{
       fit_cvm<-fit$cvm
     }
-    if(fit$cvm){
+    if(fit$cvm < fit_cvm){
       alpha_opt<-alpha
       fit_opt<-fit
       cvm_opt<-fit$cvm
@@ -240,17 +242,15 @@ prune_elastnet<-function(
   }
 
   #--optimal alpha
-  alpha_opt<-
-  pred<-predict(fit_opt, newx = tsx, s = "lambda.min", type="response")
+  pred_tr<-predict(fit_opt, newx = tsx, s = "lambda.min", type="response")
 
   #--save model and other results
   result<-list(
-    model = xgb_tune,
+    model = fit_opt,
     pred_tr = valid_tr,
     pred_ts = valid_ts,
     feat_imp = feat_imp
   )
-    
 }
 
 prune_xgb<-function(
