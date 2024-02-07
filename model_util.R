@@ -190,11 +190,111 @@ fast_rfe.coxph<-function(
   return(out)
 }
 
-prune_elastnet<-function(
+prune_glm.net<-function(
   dtrain, 
   dtest, 
   params = list(
     family = 'binomial', # ref to legal values for "glmnet",
+    alpha_seq = c(0,0.5,1), # alpha = 1 (lasso); alpha = 0 (ridge)
+    type.measure = "auc", # ref to legal values for "glmnet",
+    foldid = sample(1:5,size = length(y),replace=T)# vector of foldid
+  ),
+  verb = TRUE #verbose
+){
+  trX<-dtrain$trx
+  try<-dtrain$try
+  alpha_opt<-0 
+  cvm_opt<-Inf 
+  fit_opt<-list()
+  for(alpha in params$alpha_seq){
+    # fit model
+    fit<-cv.glmnet(
+      x = trX,
+      y = try,
+      family = params$family,
+      type.measure = params$type.measure,
+      foldid = params$foldid,
+      alpha = alpha,
+      trace.it = verb
+    )
+
+    # greedily retain optimal model (minimized)
+    if(type.measure=="auc"){
+      fit_cvm<--fit$cvm
+    }else{
+      fit_cvm<-fit$cvm
+    }
+    fit_cvm_opt<-min(fit_cvm)
+    if(fit_cvm_opt < cvm_opt){
+      alpha_opt<-alpha
+      fit_opt<-fit
+      cvm_opt<-fit_cvm_opt
+      
+      if(verb) print(paste0("optimal alpha updated to:",alpha))
+    }
+    if(verb) print(paste0("finish evaluate model with alpha:",alpha))
+  }
+
+  #--collect training results
+  valid_tr<-data.frame(
+    id = attr(dtrain,'id'),
+    actual = try,
+    pred = predict(fit_opt, newx = trX, s = "lambda.min", type="response"),
+    stringsAsFactors = F
+  )
+
+  #--collect testing results
+  valid_ts<-data.frame(
+    id = attr(dtest,'id'),
+    actual = tsy,
+    pred = predict(fit_opt, newx = tsX, s = "lambda.min", type="response"),
+    stringsAsFactors = F
+  )
+
+  #--feature importance
+  b<-fit_opt$glmnet.fit$beta
+  nm <- b@Dimnames[[1L]]
+  lam <- fit_opt$lambda
+  pos <- which(!duplicated(b@i))
+  i <- b@i[pos] + 1L
+  j <- findInterval(pos, b@p, left.open = TRUE)
+  ord <- cumsum(c(TRUE, diff.default(j) > 0L))
+  enter <- data.frame(i = i, j = j, ord = ord, var = nm[i], lambda = lam[j])
+  ind <- logical(length(i))
+  ind[i] <- TRUE
+  ind <- which(!ind)
+  ignored <- data.frame(i = ind, var = nm[ind])
+  reverse <- length(i):1L
+  j <- j - 1L
+  i <- i[reverse]
+  j <- j[reverse]
+  ord <- ord[length(ord)] + 1L - ord
+  ord <- ord[reverse]
+  leave <- data.frame(i = i, j = j, ord = ord, var = nm[i], lambda = lam[j])
+  feat_imp<-list(enter = enter, leave = leave, ignored = ignored)
+
+  #--save model and other results
+  result<-list(
+    model = fit_opt,
+    pred_tr = valid_tr,
+    pred_ts = valid_ts,
+    feat_imp = feat_imp
+  )
+}
+
+prune_glm.h2o<-function(
+  path_to_train, 
+  path_to_test,
+  x_idx,
+  y_inx = 1, 
+  f_idx = 2, 
+  params = list(
+    family = 'binomial', # ref to legal values for "h2o",
+    solver="COORDINATE_DESCENT", # samce opt method as glmnet
+    ignore_const_cols = TRUE,
+    lambda_search=TRUE,
+    early_stopping = TRUE,
+    standardize = TRUE,
     alpha_seq = c(0,0.5,1), # alpha = 1 (lasso); alpha = 0 (ridge)
     type.measure = "auc", # ref to legal values for "glmnet",
     foldid = sample(1:5,size = length(y),replace=T),# vector of foldid
