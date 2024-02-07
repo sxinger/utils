@@ -201,7 +201,7 @@ prune_glm.net<-function(
   ),
   verb = TRUE #verbose
 ){
-  trX<-dtrain$trx
+  trX<-dtrain$trX
   try<-dtrain$try
   alpha_opt<-0 
   cvm_opt<-Inf 
