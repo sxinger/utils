@@ -219,7 +219,7 @@ prune_glm.net<-function(
     )
 
     # greedily retain optimal model (minimized)
-    if(type.measure=="auc"){
+    if(params$type.measure=="auc"){
       fit_cvm<--fit$cvm
     }else{
       fit_cvm<-fit$cvm
@@ -251,7 +251,7 @@ prune_glm.net<-function(
     stringsAsFactors = F
   )
 
-  #--feature importance
+  #--feature importance - selection order
   b<-fit_opt$glmnet.fit$beta
   nm <- b@Dimnames[[1L]]
   lam <- fit_opt$lambda
@@ -271,7 +271,35 @@ prune_glm.net<-function(
   ord <- ord[length(ord)] + 1L - ord
   ord <- ord[reverse]
   leave <- data.frame(i = i, j = j, ord = ord, var = nm[i], lambda = lam[j])
-  feat_imp<-list(enter = enter, leave = leave, ignored = ignored)
+
+  #--feature importance - coefficients
+  feat_imp<-enter %>% 
+    group_by(var) %>% 
+    filter(ord==min(ord)) %>% 
+    select(var,ord,lambda) %>%
+    mutate(type = 'enter') %>%
+    ungroup %>% 
+    bind_rows(
+      leave %>% 
+        group_by(var) %>% 
+        filter(ord==max(ord)) %>% 
+        select(var,ord,lambda) %>%
+        ungroup %>% 
+        mutate(
+          ord=dense_rank(-ord),
+          type='leave')
+    ) %>% 
+    pivot_wider(
+      names_from = type,
+      values_from = c(ord,lambda)
+    ) %>% 
+    left_join(
+      data.frame(as.matrix(coef(fit_opt))) %>%
+        rownames_to_column('var') %>%
+        filter(s1 > 0) %>%
+        rename(beta = s1),
+      by="var"
+    )
 
   #--save model and other results
   result<-list(
