@@ -294,7 +294,7 @@ prune_glm.net<-function(
       values_from = c(ord,lambda)
     ) %>% 
     left_join(
-      data.frame(as.matrix(coef(fit_opt))) %>%
+      data.frame(as.matrix(coef(fit_opt,s=fit_opt$lambda.min))) %>%
         rownames_to_column('var') %>%
         filter(s1 > 0) %>%
         rename(beta = s1),
