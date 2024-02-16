@@ -270,7 +270,7 @@ prune_glm.net<-function(
   j <- j[reverse]
   ord <- ord[length(ord)] + 1L - ord
   ord <- ord[reverse]
-  leave <- data.frame(i = i, j = j, ord = ord, var = nm[i], lambda = lam[j])
+  leave <- data.frame(i = i, j = j, ord = ord, var = nm[i], lambda = ifelse(j==0,0,lam[j]))
 
   #--feature importance - coefficients
   feat_imp<-enter %>% 
