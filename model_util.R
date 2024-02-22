@@ -239,7 +239,7 @@ prune_glm.net<-function(
   valid_tr<-data.frame(
     id = attr(dtrain,'id'),
     actual = try,
-    pred = predict(fit_opt, newx = trX, s = "lambda.min", type="response")[,1]),
+    pred = predict(fit_opt, newx = trX, s = "lambda.min", type="response")[,1],
     stringsAsFactors = F
   )
 
@@ -247,7 +247,7 @@ prune_glm.net<-function(
   valid_ts<-data.frame(
     id = attr(dtest,'id'),
     actual = dtest$tsy,
-    pred = predict(fit_opt, newx = dtest$tsX, s = "lambda.min", type="response")[,1]),
+    pred = predict(fit_opt, newx = dtest$tsX, s = "lambda.min", type="response")[,1],
     stringsAsFactors = F
   )
 
