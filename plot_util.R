@@ -53,6 +53,7 @@ forestplot.HR <- function (
   plt_par = list(), # other plotting parameters passed in forest function
   ny = 1, # number of y groups
   idx_display = "Variable",
+  lbl_pval = TRUE, # whether to use p-value for the label column
   tm = forest_theme(
     arrow_type = "closed",
     arrow_label_just = "end"
@@ -81,6 +82,7 @@ forestplot.HR <- function (
 
   # add an empty column for HR plots and a label column
   plt_df %<>%
+    # CI with asterisks
     mutate(
       pvalstar = case_when(pval > 0.1 ~ "",
                           pval <= 0.1 & pval > 0.05 ~ "*",
@@ -89,24 +91,46 @@ forestplot.HR <- function (
                           TRUE ~ "****"),
       `..` = paste(rep(" ", 20), collapse = " "),
       `HR (95% CI)` = sprintf("%.2f (%.2f-%.2f) %s",est, lower, upper, pvalstar)
+    ) %>%
+    # P-values
+    mutate(
+      pvalrd = case_when(
+        pval >= 0.01 ~ as.character(round(pval,2)),
+        pval < 0.0005 ~ '0.000',
+        TRUE ~ as.character(round(pval,3))
+      ),
+      `..` = paste(rep(" ", 20), collapse = " "),
+      `P-value` = pvalrd
     )
 
   # pivot wide
   y_grp<-unique(plt_df$y_idx)
   n_grp<-length(y_grp)
-  plt_df %<>%
-    pivot_wider(
-      id_cols = c("x_idx1","x_idx2"),
-      names_from = "y_idx",
-      values_from = c(`..`,est,lower,upper,`HR (95% CI)`),
-      names_glue = "{y_idx}.{.value}"
-    ) %>%
-    group_by(x_idx1,x_idx2) %>%
-    mutate(idx=order(x_idx2)) %>%
-    ungroup
+  if(lbl_pval){
+    plt_df %<>%
+      pivot_wider(
+        id_cols = c("x_idx1","x_idx2"),
+        names_from = "y_idx",
+        values_from = c(`..`,est,lower,upper,`P-value`),
+        names_glue = "{y_idx}.{.value}"
+      )
+  }else{
+    plt_df %<>%
+      pivot_wider(
+        id_cols = c("x_idx1","x_idx2"),
+        names_from = "y_idx",
+        values_from = c(`..`,est,lower,upper,`HR (95% CI)`),
+        names_glue = "{y_idx}.{.value}"
+      )
+  }
 
   # add header rows
-  tidy_col<-c("x_idx2",tidyr::expand_grid(!!!list(b=y_grp,a=c("...",".HR (95% CI)"))) |> pmap_chr(paste0))
+  if(lbl_pval){
+    tidy_col<-c("x_idx2",tidyr::expand_grid(!!!list(b=y_grp,a=c("...",".P-value"))) |> pmap_chr(paste0))
+  }else{
+    tidy_col<-c("x_idx2",tidyr::expand_grid(!!!list(b=y_grp,a=c("...",".HR (95% CI)"))) |> pmap_chr(paste0))
+  }
+  
   plt_header<-plt_df[FALSE,tidy_col] %>%
     bind_rows(data.frame(
       x_idx1 = unique(plt_df$x_idx1),
