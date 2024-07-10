@@ -354,9 +354,14 @@ get_perf_summ<-function(
   lab0<-pred[real==0]
   pr<-PRROC::pr.curve(
     scores.class0 = lab1,
-    scores.class1 = lab0,curve=F
+    scores.class1 = lab0,
+    curve=F
   )
-  roc_ci<-pROC::ci.auc(real,pred)
+  roc_ci<-pROC::ci.auc(
+    real,pred,
+    levels = c(0, 1), direction = "<",
+    quite = TRUE
+  )
   
   perf_summ_i<-data.frame(
     overall_meas=c(
