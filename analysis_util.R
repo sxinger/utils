@@ -460,21 +460,29 @@ get_calibr<-function(
   calib<-data.frame(pred=pred,
                     y=real) %>%
     arrange(pred) %>%
-    dplyr::mutate(pred_bin = cut(pred,
-                                 breaks=unique(quantile(pred,0:(n_bin)/(n_bin))),
-                                 include.lowest=T,
-                                 labels=F)) %>%
+    dplyr::mutate(
+      pred_bin = cut(
+        pred,
+        breaks=unique(quantile(pred,0:(n_bin)/(n_bin))),
+        include.lowest=T,
+        labels=F
+      )
+    ) %>%
     ungroup %>% group_by(pred_bin) %>%
-    dplyr::summarize(expos=n(),
-                     bin_lower=min(pred),
-                     bin_upper=max(pred),
-                     bin_mid=median(pred),
-                     y_agg = sum(y),
-                     pred_p = mean(pred),
-                     .groups = "drop") %>%
+    dplyr::summarize(
+      expos=n(),
+      bin_lower=min(pred),
+      bin_upper=max(pred),
+      bin_mid=median(pred),
+      y_agg = sum(y),
+      pred_p = mean(pred),
+      .groups = "drop"
+    ) %>%
     dplyr::mutate(y_p=y_agg/expos) %>%
-    dplyr::mutate(binCI_lower = pmax(0,pred_p-1.96*sqrt(y_p*(1-y_p)/expos)),
-                  binCI_upper = pred_p+1.96*sqrt(y_p*(1-y_p)/expos))
+    dplyr::mutate(
+      binCI_lower = pmax(0,pred_p-1.96*sqrt(y_p*(1-y_p)/expos)),
+      binCI_upper = pred_p+1.96*sqrt(y_p*(1-y_p)/expos)
+    )
 
   out<-list(calib = calib)
   if(test){
