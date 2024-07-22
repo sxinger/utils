@@ -498,7 +498,7 @@ get_calibr<-function(
     t_b0<-sfit$coefficients[1,3]
     pval_b0<-sfit$coefficients[1,4]
     out[["test"]]<-data.frame(
-      test = c('hl','recalib-intx','recalib-slope','brier'),
+      test = c('HL','Re-intx','Re-slope','Br'),
       statistics = c(hl$statistic,t_b1,t_b0,brier),
       pval = c(hl$p.value,pval_b1,pval_b0,NA)
     )
