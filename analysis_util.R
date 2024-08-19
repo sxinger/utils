@@ -915,4 +915,6 @@ get_parity_summ<-function(
           print(paste0("results generated for risk bin:",b))
         }
   }
+
+  return(rslt)
 }
