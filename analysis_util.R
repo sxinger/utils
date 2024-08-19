@@ -703,8 +703,10 @@ get_parity_summ<-function(
   real,
   strata,
   n_bins = 20,
+  boots_n = 10,
   verb = TRUE
 ){
+  # requires(broom,rsample)
   N<-length(pred)
   dt<-data.frame(
     pred = pred,
