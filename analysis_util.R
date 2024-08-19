@@ -877,4 +877,6 @@ get_parity_summ<-function(
           select(thresh,summ_type,summ_val)
           )
   }
+
+  return(rslt)
 }
