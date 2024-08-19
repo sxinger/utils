@@ -702,7 +702,8 @@ get_parity_summ<-function(
   pred,
   real,
   strata,
-  n_bins = 20
+  n_bins = 20,
+  verb = TRUE
 ){
   N<-length(pred)
   dt<-data.frame(
@@ -750,10 +751,14 @@ get_parity_summ<-function(
         pred_ind = as.numeric(pred_bin>=b)
       )
     
-    # overall performance
-    rslt %<>%
-      bind_rows(
-        dt_sub %>%
+    # bootstrap for CI
+    dt_sub_boots<-bootstraps(dt_sub,times = boots_n)
+    
+    # overall accuracy
+    dt_sub_boots_rslt1<-map(
+      dt_sub_boots$splits,
+      function(x){
+        dat <- as.data.frame(x) %>%
           group_by(real) %>%
           summarize(
             pr = sum(pred_ind)/n(),
@@ -775,108 +780,137 @@ get_parity_summ<-function(
               nr_0 = "tnr"
             ),
             thresh = b
-          )
-      ) %>%
-      bind_rows(
-        dt_sub %>%
-          group_by(pred_ind) %>%
-          summarize(
-            tr = sum(real)/n(),
-            fr = (n()-sum(real))/n(),
-            .groups = "drop"
-          ) %>% 
-          pivot_longer(
-            cols = c("tr","fr"),
-            names_to = "summ_type",
-            values_to = "summ_val"
-          ) %>%
-          unite(summ_type,c("summ_type","pred_ind")) %>%
-          mutate(
-            summ_type = recode(
-              summ_type,
-              tr_1 = "ppv",
-              tr_0 = "fdr",
-              fr_1 = "for",
-              fr_0 = "npv"
-            ),
-            thresh = b
-          )
+          ) 
+        }
       )
     
-    # positive rate disparity
-    rslt %<>%
-      bind_rows(
-        dt_sub %>%
-          group_by(real,strata,ws,wr) %>%
-          summarize(
-            pr = sum(pred_ind)/n(),
-            nr = (n()-sum(pred_ind))/n(),
-            .groups = "drop"
-          ) %>% 
-          pivot_longer(
-            cols = c("pr","nr"),
-            names_to = "summ_type",
-            values_to = "summ_val"
-          ) %>%
-          unite(summ_type,c("summ_type","real")) %>%
-          mutate(
-            summ_type = recode(
-              summ_type,
-              pr_1 = "tpr",
-              pr_0 = "fnr",
-              nr_1 = "fpr",
-              nr_0 = "tnr"
+      # overall precision
+      dt_sub_boots_rslt2<-map(
+        dt_sub_boots$splits,
+        function(x){
+          dat <- as.data.frame(x) %>%
+            group_by(pred_ind) %>%
+            summarize(
+              tr = sum(real)/n(),
+              fr = (n()-sum(real))/n(),
+              .groups = "drop"
+            ) %>%
+            pivot_longer(
+              cols = c("tr","fr"),
+              names_to = "summ_type",
+              values_to = "summ_val"
+            ) %>%
+            unite(summ_type,c("summ_type","pred_ind")) %>%
+            mutate(
+              summ_type = recode(
+                summ_type,
+                tr_1 = "ppv",
+                tr_0 = "fdr",
+                fr_1 = "for",
+                fr_0 = "npv"
+              ),
+              thresh = b
             )
-          ) %>%
-          pivot_wider(
-            names_from = "strata",
-            values_from = "summ_val"
-          ) %>%
-          mutate(
-            summ_val = `1` - `0`,
-            summ_type = paste0('disp_',summ_type),
-            thresh = b
-          ) %>%
-          select(thresh,summ_type,summ_val)
-      )
-    
-    # positive/negative predicted disparity
-    rslt %<>%
-      bind_rows(
-        dt_sub %>%
-          group_by(pred_ind,strata,ws,wr) %>%
-          summarize(
-            tr = sum(real)/n(),
-            fr = (n()-sum(real))/n(),
-            .groups = "drop"
-          ) %>% 
-          pivot_longer(
-            cols = c("tr","fr"),
-            names_to = "summ_type",
-            values_to = "summ_val"
-          ) %>%
-          unite(summ_type,c("summ_type","pred_ind")) %>%
-          mutate(
-            summ_type = recode(
-              summ_type,
-              tr_1 = "ppv",
-              tr_0 = "fdr",
-              fr_1 = "for",
-              fr_0 = "npv"
-            )
-          ) %>%
-          pivot_wider(
-            names_from = "strata",
-            values_from = "summ_val"
-          ) %>%
-          mutate(
-            summ_val = `1` - `0`,
-            summ_type = paste0('disp_',summ_type),
-            thresh = b
-          ) %>%
-          select(thresh,summ_type,summ_val)
+          }
+        )
+      
+      # accuracy disparity
+      dt_sub_boots_rslt3<-map(
+        dt_sub_boots$splits,
+        function(x){
+          dat <- as.data.frame(x) %>%
+            group_by(real,strata,ws,wr) %>%
+            summarize(
+              pr = sum(pred_ind)/n(),
+              nr = (n()-sum(pred_ind))/n(),
+              .groups = "drop"
+            ) %>%
+            pivot_longer(
+              cols = c("pr","nr"),
+              names_to = "summ_type",
+              values_to = "summ_val"
+            ) %>%
+            unite(summ_type,c("summ_type","real")) %>%
+            mutate(
+              summ_type = recode(
+                summ_type,
+                pr_1 = "tpr",
+                pr_0 = "fnr",
+                nr_1 = "fpr",
+                nr_0 = "tnr"
+              )
+            ) %>%
+            pivot_wider(
+              names_from = "strata",
+              values_from = "summ_val"
+            ) %>%
+            mutate(
+              summ_val = `1` - `0`,
+              summ_type = paste0('disp_',summ_type),
+              thresh = b
+            ) %>%
+            select(thresh,summ_type,summ_val)
+          }
+        )
+        
+        # precision disparity
+        dt_sub_boots_rslt4<-map(
+          dt_sub_boots$splits,
+          function(x){
+            dat <- as.data.frame(x) %>%
+              group_by(pred_ind,strata,ws,wr) %>%
+                summarize(
+                  tr = sum(real)/n(),
+                  fr = (n()-sum(real))/n(),
+                  .groups = "drop"
+                ) %>%
+                pivot_longer(
+                  cols = c("tr","fr"),
+                  names_to = "summ_type",
+                  values_to = "summ_val"
+                ) %>%
+                unite(summ_type,c("summ_type","pred_ind")) %>%
+                mutate(
+                  summ_type = recode(
+                    summ_type,
+                    tr_1 = "ppv",
+                    tr_0 = "fdr",
+                    fr_1 = "for",
+                    fr_0 = "npv"
+                  )
+                ) %>%
+                pivot_wider(
+                  names_from = "strata",
+                  values_from = "summ_val"
+                ) %>%
+                mutate(
+                  summ_val = `1` - `0`,
+                  summ_type = paste0('disp_',summ_type),
+                  thresh = b
+                ) %>%
+                select(thresh,summ_type,summ_val)
+            }
           )
+        
+        # summarize over bootstrapped samples
+        rslt %<>%
+          bind_rows(
+            bind_rows(dt_sub_boots_rslt1) %>%
+              bind_rows(dt_sub_boots_rslt2) %>%
+              bind_rows(dt_sub_boots_rslt3) %>%
+              bind_rows(dt_sub_boots_rslt4) %>%
+              group_by(summ_type,thresh) %>%
+              summarise(
+                summ_val_m = median(summ_val),
+                summ_val_lb = quantile(summ_val,0.025),
+                summ_val_ub = quantile(summ_val,0.975),
+                .groups = "drop"
+              )
+          )
+        
+        # report progress
+        if(verb){
+          print(paste0("results generated for risk bin:",b))
+        }
   }
-
-  return(rslt)
 }
