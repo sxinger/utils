@@ -756,8 +756,8 @@ get_parity_summ<-function(
         dt_sub %>%
           group_by(real) %>%
           summarize(
-            pr = sum(pred_ind)/nrow(.),
-            nr = (N-sum(pred_ind))/nrow(.),
+            pr = sum(pred_ind)/n(),
+            nr = (n()-sum(pred_ind))/n(),
             .groups = "drop"
           ) %>% 
           pivot_longer(
@@ -781,8 +781,8 @@ get_parity_summ<-function(
         dt_sub %>%
           group_by(pred_ind) %>%
           summarize(
-            tr = sum(real)/nrow(.),
-            fr = (N-sum(real))/nrow(.),
+            tr = sum(real)/n(),
+            fr = (n()-sum(real))/n(),
             .groups = "drop"
           ) %>% 
           pivot_longer(
@@ -809,8 +809,8 @@ get_parity_summ<-function(
         dt_sub %>%
           group_by(real,strata,ws,wr) %>%
           summarize(
-            pr = sum(pred_ind)/nrow(.),
-            nr = (nrow(.)-sum(pred_ind))/nrow(.),
+            pr = sum(pred_ind)/n(),
+            nr = (n()-sum(pred_ind))/n(),
             .groups = "drop"
           ) %>% 
           pivot_longer(
@@ -846,8 +846,8 @@ get_parity_summ<-function(
         dt_sub %>%
           group_by(pred_ind,strata,ws,wr) %>%
           summarize(
-            tr = sum(real)/nrow(.),
-            fr = (nrow(.)-sum(real))/nrow(.),
+            tr = sum(real)/n(),
+            fr = (n()-sum(real))/n(),
             .groups = "drop"
           ) %>% 
           pivot_longer(
