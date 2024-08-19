@@ -497,6 +497,7 @@ get_calibr<-function(
     pval_b1<- 2 * pt(abs(t_b1), df = df.residual(fit), lower.tail = FALSE)
     t_b0<-sfit$coefficients[1,3]
     pval_b0<-sfit$coefficients[1,4]
+    # put together
     out[["test"]]<-data.frame(
       test = c('HL','Re-intx','Re-slope','Br'),
       statistics = c(hl$statistic,t_b1,t_b0,brier),
@@ -588,15 +589,16 @@ get_calibr.surv<-function(
   return(mat_pred)
 }
 
-get_stab_summ<-function(rank_lst,
-                         var_colnm="var",
-                         rank_colnm="rk",
-                         metric=c("kuncheva",
-                                  "wci",
-                                  "wci_rel"),
-                         f=NULL,
-                         d=NULL){
-  
+get_stab_summ<-function(
+  rank_lst,
+  var_colnm="var",
+  rank_colnm="rk",
+  metric=c("kuncheva",
+          "wci",
+          "wci_rel"),
+  f=NULL,
+  d=NULL
+){
   K<-length(rank_lst)
   varlst<-c()
   rk_stack<-c()
@@ -694,4 +696,185 @@ get_stab_summ<-function(rank_lst,
   }
   
   return(stb_idx)
+}
+
+get_parity_summ<-function(
+  pred,
+  real,
+  strata,
+  n_bins = 20
+){
+  N<-length(pred)
+  dt<-data.frame(
+    pred = pred,
+    real = real,
+    strata = strata
+  ) %>%
+    mutate(
+      ns = sum(strata),
+      ws = ns/N,
+      nr = sum(real),
+      wr = nr/N
+    ) %>%
+    arrange(pred)
+
+  # unique pred
+  pred_uni<-data.frame(pred = unique(dt$pred)) %>%
+    mutate(
+      pred_bin = cut(
+        pred,
+        breaks = quantile(pred,probs = seq(0,1,length.out=n_bins+1)),
+        include.lowest = TRUE,
+        labels = FALSE
+      )
+    ) %>%
+    group_by(pred_bin) %>%
+    mutate(
+      lb=min(pred),
+      ub=max(pred)
+    ) %>%
+    ungroup
+
+  dt %<>%
+    left_join(pred_uni,by="pred")
+
+  # main procedure
+  rslt<-data.frame(
+    thresh = as.double(),
+    summ_type = as.character(),
+    summ_val = as.double()
+  )
+  for(b in seq_along(1:n_bins)){
+    dt_sub<-dt %>%
+      mutate(
+        pred_ind = as.numeric(pred_bin>=b)
+      )
+    
+    # overall performance
+    rslt %<>%
+      bind_rows(
+        dt_sub %>%
+          group_by(real) %>%
+          summarize(
+            pr = sum(pred_ind)/nrow(.),
+            nr = (N-sum(pred_ind))/nrow(.),
+            .groups = "drop"
+          ) %>% 
+          pivot_longer(
+            cols = c("pr","nr"),
+            names_to = "summ_type",
+            values_to = "summ_val"
+          ) %>%
+          unite(summ_type,c("summ_type","real")) %>%
+          mutate(
+            summ_type = recode(
+              summ_type,
+              pr_1 = "tpr",
+              pr_0 = "fnr",
+              nr_1 = "fpr",
+              nr_0 = "tnr"
+            ),
+            thresh = b
+          )
+      ) %>%
+      bind_rows(
+        dt_sub %>%
+          group_by(pred_ind) %>%
+          summarize(
+            tr = sum(real)/nrow(.),
+            fr = (N-sum(real))/nrow(.),
+            .groups = "drop"
+          ) %>% 
+          pivot_longer(
+            cols = c("tr","fr"),
+            names_to = "summ_type",
+            values_to = "summ_val"
+          ) %>%
+          unite(summ_type,c("summ_type","pred_ind")) %>%
+          mutate(
+            summ_type = recode(
+              summ_type,
+              tr_1 = "ppv",
+              tr_0 = "fdr",
+              fr_1 = "for",
+              fr_0 = "npv"
+            ),
+            thresh = b
+          )
+      )
+    
+    # positive rate disparity
+    rslt %<>%
+      bind_rows(
+        dt_sub %>%
+          group_by(real,strata,ws,wr) %>%
+          summarize(
+            pr = sum(pred_ind)/nrow(.),
+            nr = (nrow(.)-sum(pred_ind))/nrow(.),
+            .groups = "drop"
+          ) %>% 
+          pivot_longer(
+            cols = c("pr","nr"),
+            names_to = "summ_type",
+            values_to = "summ_val"
+          ) %>%
+          unite(summ_type,c("summ_type","real")) %>%
+          mutate(
+            summ_type = recode(
+              summ_type,
+              pr_1 = "tpr",
+              pr_0 = "fnr",
+              nr_1 = "fpr",
+              nr_0 = "tnr"
+            )
+          ) %>%
+          pivot_wider(
+            names_from = "strata",
+            values_from = "summ_val"
+          ) %>%
+          mutate(
+            summ_val = `1` - `0`,
+            summ_type = paste0('disp_',summ_type),
+            thresh = b
+          ) %>%
+          select(thresh,summ_type,summ_val)
+      )
+    
+    # positive/negative predicted disparity
+    rslt %<>%
+      bind_rows(
+        dt_sub %>%
+          group_by(pred_ind,strata,ws,wr) %>%
+          summarize(
+            tr = sum(real)/nrow(.),
+            fr = (nrow(.)-sum(real))/nrow(.),
+            .groups = "drop"
+          ) %>% 
+          pivot_longer(
+            cols = c("tr","fr"),
+            names_to = "summ_type",
+            values_to = "summ_val"
+          ) %>%
+          unite(summ_type,c("summ_type","pred_ind")) %>%
+          mutate(
+            summ_type = recode(
+              summ_type,
+              tr_1 = "ppv",
+              tr_0 = "fdr",
+              fr_1 = "for",
+              fr_0 = "npv"
+            )
+          ) %>%
+          pivot_wider(
+            names_from = "strata",
+            values_from = "summ_val"
+          ) %>%
+          mutate(
+            summ_val = `1` - `0`,
+            summ_type = paste0('disp_',summ_type),
+            thresh = b
+          ) %>%
+          select(thresh,summ_type,summ_val)
+          )
+  }
 }
