@@ -213,7 +213,7 @@ univar_analysis_mixed<-function(
         bind_rows(
           out_cat %>%
             unite("var",c("var","val"),sep="=") %>%
-            mutate(label2=paste0(n," (",round(prop*100,1),"%)"," [",round(val_miss/n,2),"]")) %>%
+            mutate(label2=paste0(n," (",round(prop*100,1),"%)"," [",round(val_miss/tot,2),"]")) %>%
             dplyr::select(var,grp,p.value,label2) %>% 
             spread(grp,label2) 
         ) 
