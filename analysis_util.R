@@ -158,7 +158,7 @@ univar_analysis_mixed<-function(
             n,"; ",
             # round(val_miss/n,2),"; ", #missing rate
             round(val_mean,1),"(",round(val_sd,2),"); ",
-            val_med,"(",val_q1,",",val_q3,")"
+            round(val_med,1),"(",round(val_q1,1),",",round(val_q3,1),")"
           )
         )
       out %<>%
