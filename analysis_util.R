@@ -166,7 +166,7 @@ univar_analysis_mixed<-function(
           out_num %>%
             mutate(label2=paste0(
               round(val_mean,1)," (",round(val_sd,1),");",
-              val_med,"(",val_q1,",",val_q3,")",
+              round(val_med,1),"(",round(val_q1,1),",",round(val_q3,1),")",
               " [",round(val_miss/n,2),"]")
             ) %>%
             dplyr::select(var,grp,p.value,label2) %>% 
