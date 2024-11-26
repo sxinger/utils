@@ -397,8 +397,8 @@ prune_xgb<-function(
     eval_metric = "auc"
   ),
   nround = 500,
-  folds = folds,
-  # nfold = 5,
+  folds = NULL,
+  nfold = NULL,
   prediction = FALSE,
   showsd = FALSE,
   early_stopping_rounds = 50,
@@ -425,7 +425,7 @@ prune_xgb<-function(
     data = dtrain,
     nround = nround,
     folds = folds,
-    # nfold = nfold,
+    nfold = nfold,
     prediction = prediction,
     showsd = showsd,
     early_stopping_rounds = early_stopping_rounds,
@@ -434,7 +434,12 @@ prune_xgb<-function(
     print_every_n = print_every_n
   ) 
   # get optimal steps
-  steps<-which(bst$evaluation_log$test_auc_mean==max(bst$evaluation_log$test_auc_mean))
+  opt_fun<-paste0("test_",params$eval_metric,"_mean")
+  if (maximize == TRUE){
+    steps<-which(bst$evaluation_log[[opt_fun]]==max(bst$evaluation_log[[opt_fun]]))
+  }else{
+    steps<-which(bst$evaluation_log[[opt_fun]]==min(bst$evaluation_log[[opt_fun]]))
+  }
   
   #--prune the optimal model
   xgb_tune<-xgb.train(
@@ -468,8 +473,9 @@ prune_xgb<-function(
   )
   
   #--feature importance
-  feat_imp<-xgb.importance(model=xgb_tune)
-  
+  feat_imp<-xgb.importance(model=xgb_tune) %>%
+    mutate(rk_Gain = rank(-Gain))
+
   #--save model and other results
   result<-list(
     model = xgb_tune,
@@ -478,6 +484,20 @@ prune_xgb<-function(
     feat_imp = feat_imp
   )
   return(result)
+}
+
+bayopt_rf<-function(
+  dtrain,
+  dtest,
+  folds=5,
+  params_bd=list(
+    max_depth = c(4L, 10L),
+    min_child_weight = c(2L,10L),
+    subsample = c(0.5,0.8)
+  ),
+  N_CL=1,
+){
+
 }
 
 bayeopt_xgb<-function(

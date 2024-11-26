@@ -2,6 +2,24 @@
 ## utility functions for data processing##
 ##########################################
 
+mice_multimix<-function(
+  m = , 
+  param = 
+){
+  # methods(mice)
+  init = mice(dat, maxit=0) 
+  meth = init$method
+  predM = init$predictorMatrix,
+
+  predM[c()]=0
+  meth[c()]=""
+  meth[c()]="norm"
+  mice_obj = mice(dat, method=meth, predictorMatrix=predM, m=5)
+  imputed <- complete(mice_obj)
+
+  return(imputed)
+}
+
 parse_dx_ont_icd<-function(path_vec){
   if (!is.null(dim(path_vec))||path_vec[1]=="")
     stop("input has to be a non-empty vector!")
