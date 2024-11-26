@@ -486,19 +486,19 @@ prune_xgb<-function(
   return(result)
 }
 
-bayopt_rf<-function(
-  dtrain,
-  dtest,
-  folds=5,
-  params_bd=list(
-    max_depth = c(4L, 10L),
-    min_child_weight = c(2L,10L),
-    subsample = c(0.5,0.8)
-  ),
-  N_CL=1,
-){
+# bayopt_rf<-function(
+#   dtrain,
+#   dtest,
+#   folds=5,
+#   params_bd=list(
+#     max_depth = c(4L, 10L),
+#     min_child_weight = c(2L,10L),
+#     subsample = c(0.5,0.8)
+#   ),
+#   N_CL=1
+# ){
 
-}
+# }
 
 bayeopt_xgb<-function(
   dtrain,
