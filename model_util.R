@@ -495,7 +495,8 @@ prune_xgb<-function(
 #     min_child_weight = c(2L,10L),
 #     subsample = c(0.5,0.8)
 #   ),
-#   N_CL=1
+#   N_CL=1,
+#   verb = T
 # ){
 
 # }
