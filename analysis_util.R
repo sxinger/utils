@@ -918,3 +918,77 @@ get_parity_summ<-function(
 
   return(rslt)
 }
+
+# require(dplyr, gtsummary, flextable, officer)
+gen_tbl1 <- function(
+    dat,
+    group_var,
+    output_file = "table1",
+    title = "Table 1. Cohort Characterization",
+    vars = NULL,
+    facvars = NULL,
+    label_list = NULL,
+    include_overall = FALSE,
+    include_p = FALSE,
+    font_size = 10
+) {
+  
+  group_var <- rlang::ensym(group_var)
+  cont_vars <- vars[!vars %in% facvars]
+  
+  if (is.null(label_list)) {
+    label_list <- purrr::map(
+      vars,
+      ~ rlang::new_formula(rlang::sym(.x), .x)
+    )
+  }
+  
+  dat2 <- dat %>%
+    dplyr::select(!!group_var, dplyr::all_of(vars))
+  
+  tbl <- dat2 %>%
+    gtsummary::tbl_summary(
+      by = !!group_var,
+      include = dplyr::all_of(vars),
+      statistic = list(
+        gtsummary::all_continuous() ~ "{mean} ({sd})",
+        gtsummary::all_categorical() ~ "{n} ({p}%)"
+      ),
+      label = label_list,
+      missing = "ifany"
+    )
+  
+  if (isTRUE(include_overall)) {
+    tbl <- tbl %>%
+      gtsummary::add_overall(last = FALSE)
+  }
+  
+  if (isTRUE(include_p)) {
+    tbl <- tbl %>%
+      gtsummary::add_p(
+        test = list(
+          gtsummary::all_continuous() ~ "kruskal.test",
+          gtsummary::all_categorical() ~ "chisq.test"
+        )
+      )
+  }
+  
+  tbl_kb <- tbl %>%
+    gtsummary::bold_labels() %>%
+    gtsummary::as_kable_extra(
+      format = "html",
+      escape = FALSE
+    ) %>%
+    kableExtra::kable_styling(
+      full_width = FALSE,
+      position = "left",
+      font_size = font_size,
+      bootstrap_options = c("striped", "hover", "condensed")
+    )
+  
+  kableExtra::save_kable(
+    tbl_kb,
+    file = paste0(output_file,".html"),
+    self_contained = TRUE
+  )
+}
