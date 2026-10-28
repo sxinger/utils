@@ -3,6 +3,8 @@
 # The default grid follows ggplot2's facet layout. Incomplete rows fill the
 # plot width and return a patchwork object (requires the patchwork package).
 # Table 1 uses the source cohort; by_strata tables are also exported when saving.
+# Larger-than-2x2 Fisher tests use 10,000 Monte Carlo replicates to avoid exact
+# workspace limits. Call set.seed() before running for reproducible p-values.
 run_statspipe <- function(
     data,
     outcomes,
@@ -1303,7 +1305,9 @@ run_statspipe <- function(
       
       tbl <- tryCatch(
         gtsummary::add_p(
-          tbl
+          tbl,
+          test.args = gtsummary::all_tests("fisher.test") ~
+            list(simulate.p.value = TRUE, B = 10000L)
         ),
         
         error = function(e) {

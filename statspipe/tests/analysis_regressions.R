@@ -90,6 +90,24 @@ check_analysis_regressions <- function() {
   reloaded <- readRDS(saved$saved_files$complete_results)
   stopifnot("sex" %in% names(reloaded$table1$by_strata))
 
+  sparse_args <- args
+  sparse_args$save <- FALSE
+  sparse_args$strata <- "stratum"
+  sparse_args$table1_vars <- "category"
+  sparse_args$data$stratum <- factor(rep(c("A", "B", "C"), length.out = nrow(data)))
+  sparse_args$data$category <- factor(rep(seq_len(17), length.out = nrow(data)))
+  set.seed(123)
+  sparse_result <- do.call(run_statspipe, sparse_args)
+  sparse_table <- sparse_result$table1$by_strata$stratum$table_body
+  p_rows <- sparse_table$variable == "category" & sparse_table$row_type == "label"
+  stopifnot(
+    sum(p_rows) == 1L,
+    sparse_table$test_name[p_rows] == "fisher.test",
+    is.finite(sparse_table$p.value[p_rows]),
+    sparse_table$p.value[p_rows] > 0,
+    sparse_table$p.value[p_rows] <= 1
+  )
+
   args$save <- FALSE
   expect_error <- function(input, text) {
     error <- tryCatch(do.call(run_statspipe, input), error = identity)
