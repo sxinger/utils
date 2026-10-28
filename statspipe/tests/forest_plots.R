@@ -67,6 +67,14 @@ check_forest_plots <- function() {
   check_rows(by_rows$forest$plot, c(3L, 2L))
 
   args$forest_nrow <- NULL
+  default_layout <- do.call(run_statspipe, args)
+  check_rows(default_layout$forest$plot, c(3L, 2L))
+  args$outcomes <- outcomes[1:4]
+  complete_grid <- do.call(run_statspipe, args)
+  stopifnot(
+    !inherits(complete_grid$forest$plot, "patchwork"),
+    nrow(ggplot2::ggplot_build(complete_grid$forest$plot)$layout$layout) == 4L
+  )
   args$outcomes <- outcomes[1:3]
   complete <- do.call(run_statspipe, args)
   stopifnot(!inherits(complete$forest$plot, "patchwork"))

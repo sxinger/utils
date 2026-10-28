@@ -1,3 +1,8 @@
+# forest_labels is a named character vector keyed by covariate or coefficient.
+# Exact coefficient labels override covariate labels; categorical suffixes remain.
+# The default grid follows ggplot2's facet layout. Incomplete rows fill the
+# plot width and return a patchwork object (requires the patchwork package).
+# Table 1 uses the source cohort; by_strata tables are also exported when saving.
 run_statspipe <- function(
     data,
     outcomes,
@@ -59,6 +64,22 @@ run_statspipe <- function(
   }
   
   forest_source <- match.arg(forest_source)
+  if (!is.numeric(conf_level) || length(conf_level) != 1L ||
+      is.na(conf_level) || !is.finite(conf_level) ||
+      conf_level <= 0 || conf_level >= 1) {
+    stop("'conf_level' must be a single number strictly between 0 and 1.")
+  }
+  for (arg_name in c("forest_annotate", "save")) {
+    value <- get(arg_name)
+    if (!is.logical(value) || length(value) != 1L || is.na(value)) {
+      stop("'", arg_name, "' must be TRUE or FALSE.")
+    }
+  }
+  ci_label <- paste0(format(100 * conf_level, trim = TRUE), "%")
+  forest_subtitle <- paste0(
+    "Points represent estimates and lines represent ", ci_label,
+    " confidence intervals"
+  )
 
   if (!is.null(ncol)) {
     if (!is.null(forest_ncol) && !identical(as.numeric(ncol), as.numeric(forest_ncol))) {
@@ -145,7 +166,7 @@ run_statspipe <- function(
     filtered
   }
   
-  if (!is.list(outcomes)) {
+  if (!is.list(outcomes) || length(outcomes) == 0L) {
     stop(
       "'outcomes' must be a named list."
     )
@@ -153,10 +174,12 @@ run_statspipe <- function(
   
   if (
     is.null(names(outcomes)) ||
-    any(names(outcomes) == "")
+    anyNA(names(outcomes)) ||
+    any(!nzchar(trimws(names(outcomes)))) ||
+    anyDuplicated(names(outcomes))
   ) {
     stop(
-      "'outcomes' must be a named list."
+      "'outcomes' must be a non-empty, uniquely named list."
     )
   }
 
@@ -843,7 +866,7 @@ run_statspipe <- function(
     } else if (inherits(model, "lm")) {
       prior_w <- model$weights
       if (is.null(prior_w)) prior_w <- rep(1, n)
-      score_factor <- prior_w * stats::residuals(model)
+      score_factor <- prior_w * model$residuals
       info_w <- prior_w
     } else {
       stop("cluster_vcov supports only lm and glm objects.")
@@ -980,10 +1003,13 @@ run_statspipe <- function(
         ]
         original_n <- nrow(fg_source)
 
+        # Preserve subject IDs through expansion for subject-level robust SEs.
+        fg_source$.statspipe_fg_id <- seq_len(original_n)
         # Fine-Gray requires a multi-state status factor with censoring first.
+        fg_events <- as.character(fg_source[[info$event]])
         fg_source$.statspipe_fg_status <- factor(
-          fg_source[[info$event]],
-          levels = unique(c(info$censor_value, fg_source[[info$event]]))
+          fg_events,
+          levels = unique(c(as.character(info$censor_value), fg_events))
         )
         target_level <- as.character(info$event_of_interest)
 
@@ -997,6 +1023,7 @@ run_statspipe <- function(
         # Include cluster in finegray() input so it survives row expansion,
         # but do not include it as a modeled predictor.
         fg_rhs_terms <- c(sprintf("`%s`", predictors))
+        fg_rhs_terms <- c(fg_rhs_terms, ".statspipe_fg_id")
         if (!is.null(cluster)) {
           fg_rhs_terms <- c(fg_rhs_terms, sprintf("`%s`", cluster))
         }
@@ -1025,6 +1052,7 @@ run_statspipe <- function(
         if (is.null(cluster)) {
           model <- survival::coxph(
             fg_cox_formula, data = fg_data, weights = fgwt,
+            cluster = fg_data$.statspipe_fg_id, robust = TRUE,
             x = TRUE, model = TRUE
           )
         } else {
@@ -1138,7 +1166,7 @@ run_statspipe <- function(
         ) {
           attr(model, "statspipe_original_n")
         } else {
-          stats::nobs(model)
+          if (info$type == "survival") model$n else stats::nobs(model)
         }
       )
     
@@ -1242,21 +1270,12 @@ run_statspipe <- function(
   
   
   # ------------------------------------------------------------
-  # Outcome-specific Table 1, including stratified summaries
+  # Stratified Table 1; strata can either be outcome or exposure
   # ------------------------------------------------------------
 
-  table1$by_outcome <- list()
-  for (outcome_name in names(outcomes)) {
-    cohort <- cohort_data[[outcome_name]]
-    outcome_tables <- list()
-    outcome_tables$overall <-
-      cohort |>
-      dplyr::select(dplyr::all_of(table1_vars)) |>
-      gtsummary::tbl_summary(missing = "ifany") |>
-      gtsummary::add_n()
-
-    if (!is.null(strata) && length(strata) > 0) {
-      for (s in strata) {
+  table1$by_strata <- list()
+  if (!is.null(strata) && length(strata) > 0) {
+    for (s in strata) {
       
       vars_for_table <- unique(
         c(
@@ -1266,13 +1285,12 @@ run_statspipe <- function(
       )
       
       tbl_data <-
-        cohort |>
+        data |>
         dplyr::select(
           dplyr::all_of(
             vars_for_table
           )
         )
-      
       
       tbl <-
         gtsummary::tbl_summary(
@@ -1283,15 +1301,12 @@ run_statspipe <- function(
         gtsummary::add_overall() |>
         gtsummary::add_n()
       
-      
       tbl <- tryCatch(
-        
         gtsummary::add_p(
           tbl
         ),
         
         error = function(e) {
-          
           warning(
             paste0(
               "Unable to calculate Table 1 p-values for ",
@@ -1305,13 +1320,9 @@ run_statspipe <- function(
         }
       )
       
-      
-      outcome_tables[[s]] <- tbl
-      }
+      table1$by_strata[[s]] <- tbl
     }
-    table1$by_outcome[[outcome_name]] <- outcome_tables
   }
-  
   
   # ============================================================
   # 3. UNIVARIATE REGRESSION
@@ -1561,9 +1572,9 @@ run_statspipe <- function(
             "HR",
             "sHR"
           ),
-        !is.na(estimate),
-        !is.na(conf.low),
-        !is.na(conf.high),
+        is.finite(estimate),
+        is.finite(conf.low),
+        is.finite(conf.high),
         estimate > 0,
         conf.low > 0,
         conf.high > 0
@@ -1641,7 +1652,8 @@ run_statspipe <- function(
       }
       plot_cols <- if (!is.null(forest_ncol)) forest_ncol else if (
         !is.null(forest_nrow)) ceiling(n_outcomes_plot / forest_nrow) else
-        grDevices::n2mfrow(n_outcomes_plot)[2L]
+        grDevices::n2mfrow(n_outcomes_plot)[1L]
+      plot_cols <- min(plot_cols, n_outcomes_plot)
       plot_rows <- ceiling(n_outcomes_plot / plot_cols)
       incomplete_row <- plot_rows > 1L && n_outcomes_plot %% plot_cols != 0L
       if (incomplete_row && !requireNamespace("patchwork", quietly = TRUE)) {
@@ -1685,7 +1697,7 @@ run_statspipe <- function(
             ),
             "\n",
             measure_label,
-            " (95% CI)"
+            " (", ci_label, " CI)"
           )
         )
       
@@ -1932,8 +1944,8 @@ run_statspipe <- function(
         
         ggplot2::facet_wrap(
           ggplot2::vars(outcome_label),
-          ncol = forest_ncol,
-          nrow = forest_nrow,
+          ncol = plot_cols,
+          nrow = plot_rows,
           scales = "free_x"
         ) +
 
@@ -1948,8 +1960,7 @@ run_statspipe <- function(
             ),
             " regression results"
           ),
-          subtitle =
-            "Points represent estimates and lines represent 95% confidence intervals"
+          subtitle = forest_subtitle
         ) +
         
         ggplot2::coord_cartesian(
@@ -2038,7 +2049,7 @@ run_statspipe <- function(
         forest_plot <- patchwork::wrap_plots(row_plots, ncol = 1, heights = 1) +
           patchwork::plot_annotation(
             title = paste0(tools::toTitleCase(forest_source), " regression results"),
-            subtitle = "Points represent estimates and lines represent 95% confidence intervals"
+            subtitle = forest_subtitle
           )
       }
       log_progress("Created combined forest plot and ", length(forest_plots),
@@ -2054,6 +2065,7 @@ run_statspipe <- function(
   results <- list(
 
     settings = list(
+      conf_level = conf_level,
       cluster = cluster,
       cohort_filters = cohort_filters,
       cohort_counts = cohort_counts,
@@ -2174,6 +2186,9 @@ run_statspipe <- function(
           showWarnings = FALSE
         )
       }
+      if (!dir.exists(folder)) {
+        stop("Unable to create output directory: ", folder)
+      }
     }
     
     
@@ -2182,11 +2197,8 @@ run_statspipe <- function(
     # ==========================================================
     
     table1_to_save <- list(overall = table1$overall)
-    for (outcome_name in names(table1$by_outcome)) {
-      for (nm in names(table1$by_outcome[[outcome_name]])) {
-        key <- paste0(outcome_name, "_", nm)
-        table1_to_save[[key]] <- table1$by_outcome[[outcome_name]][[nm]]
-      }
+    for (s in names(table1$by_strata)) {
+      table1_to_save[[paste0("by_strata_", s)]] <- table1$by_strata[[s]]
     }
 
     for (nm in names(table1_to_save)) {
@@ -2216,6 +2228,8 @@ run_statspipe <- function(
           ),
           
           error = function(e) {
+            warning("Unable to format Table 1 '", nm, "' for CSV: ",
+                    conditionMessage(e), ". Exporting the table body instead.")
             table1_to_save[[nm]]$table_body
           }
         )
