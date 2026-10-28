@@ -1,10 +1,3 @@
-# forest_labels is a named character vector keyed by covariate or coefficient.
-# Exact coefficient labels override covariate labels; categorical suffixes remain.
-# The default grid follows ggplot2's facet layout. Incomplete rows fill the
-# plot width and return a patchwork object (requires the patchwork package).
-# Table 1 uses the source cohort; by_strata tables are also exported when saving.
-# Larger-than-2x2 Fisher tests use 10,000 Monte Carlo replicates to avoid exact
-# workspace limits. Call set.seed() before running for reproducible p-values.
 run_statspipe <- function(
     data,
     outcomes,
@@ -1921,6 +1914,7 @@ run_statspipe <- function(
             ),
             hjust = -0.08,
             size = 3,
+            fontface = "bold",
             lineheight = 0.9
           )
       }
@@ -1974,6 +1968,7 @@ run_statspipe <- function(
         ggplot2::theme_bw() +
         
         ggplot2::theme(
+          text = ggplot2::element_text(face = "bold"),
           
           panel.grid.minor =
             ggplot2::element_blank(),
@@ -2053,7 +2048,10 @@ run_statspipe <- function(
         forest_plot <- patchwork::wrap_plots(row_plots, ncol = 1, heights = 1) +
           patchwork::plot_annotation(
             title = paste0(tools::toTitleCase(forest_source), " regression results"),
-            subtitle = forest_subtitle
+            subtitle = forest_subtitle,
+            theme = ggplot2::theme(
+              text = ggplot2::element_text(face = "bold")
+            )
           )
       }
       log_progress("Created combined forest plot and ", length(forest_plots),
